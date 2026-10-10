@@ -8,6 +8,7 @@
 .PHONY: codex-application-crash
 .PHONY: execution-profiles
 .PHONY: claude-auth-contracts
+.PHONY: claude-controller-contracts
 .PHONY: codex-skills-native
 
 NETCAP_CODEX ?= codex
@@ -76,6 +77,10 @@ claude-deps:
 
 claude-build:
 	npm --prefix bridges/claude run build
+
+claude-controller-contracts: claude-build
+	node tests/claude_controller_channel_test.mjs
+	go test -race ./internal/runtime -run '^TestClaude(Controller|SubmittedResponse)' -count=1 -v
 
 claude-auth-contracts: claude-build
 	node tests/claude_mcp_auth_test.mjs

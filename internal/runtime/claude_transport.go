@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -42,6 +41,7 @@ type claudeTransport struct {
 	installedSettingsRecovery int
 	originalQueryRecovery     int
 	pendingPermissions        int
+	controller                *claudeControllerPeer
 }
 
 func claudeEnv(i Instance) []string {
@@ -50,7 +50,7 @@ func claudeEnv(i Instance) []string {
 	}
 	out := []string{}
 	for _, key := range append([]string{"PATH", "HOME", "USER", "LANG", "TERM", "SHELL"}, i.EnvAllow...) {
-		if key == "CLAUDE_CONFIG_DIR" || key == "CLAUDE_CODE_RESUME_INTERRUPTED_TURN" {
+		if key == "CLAUDE_CONFIG_DIR" || key == "CLAUDE_CODE_RESUME_INTERRUPTED_TURN" || key == "NETCAP_CLAUDE_CONTROLLER_BINDING" {
 			continue
 		}
 		if value, ok := os.LookupEnv(key); ok {
@@ -64,26 +64,39 @@ func connectClaude(ctx context.Context, i Instance, dir string) (*claudeTranspor
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err
 	}
+	dir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return nil, err
+	}
+	dir, err = filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	lock, err := os.OpenFile(filepath.Join(dir, "bridge.lock"), os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		return nil, err
 	}
 	defer lock.Close()
 	if err = syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		return nil, fmt.Errorf("旧 Claude bridge 仍持有实例，不能创建第二个控制器: %w", err)
+		if !errors.Is(err, syscall.EWOULDBLOCK) {
+			return nil, err
+		}
+		return attachClaudeController(ctx, i, dir)
 	}
 	node := i.NodeExecutable
 	if node == "" {
 		node = "node"
 	}
-	cmd := exec.Command(node, i.Bridge, dir)
-	cmd.Env = claudeEnv(i)
+	cmd := exec.Command(node, i.Bridge, dir, "--persistent-control")
+	cmd.Env = append(claudeEnv(i), "NETCAP_CLAUDE_CONTROLLER_BINDING="+claudeControllerBinding(i, dir))
 	if executable, err := os.Executable(); err == nil {
 		cmd.Env = append(cmd.Env, "NETCAP_CLAUDE_SETTINGS_EXEC="+executable)
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	// The child retains this lock after a Go crash until it has shut down SDK
-	// queries. A new controller cannot race the old bridge's EOF cleanup.
+	// The child retains the instance lock across Go crashes. A reconnect must
+	// verify its existing control endpoint instead of starting another bridge.
 	cmd.ExtraFiles = []*os.File{lock}
 	cmd.Stderr = io.Discard
 	in, err := cmd.StdinPipe()
@@ -107,24 +120,22 @@ func connectClaude(ctx context.Context, i Instance, dir string) (*claudeTranspor
 		close(p.exited)
 		p.fail(errors.New("Claude bridge 已退出，原执行需核对"))
 	}()
-	var hello struct {
-		Version                   int    `json:"version"`
-		SDK                       string `json:"sdk"`
-		SettingsFileConsumer      int    `json:"settings_file_consumer"`
-		InstalledSettings         int    `json:"installed_settings"`
-		InstalledSettingsRecovery int    `json:"installed_settings_recovery"`
-		OriginalQueryRecovery     int    `json:"original_query_recovery"`
-		PendingPermissions        int    `json:"pending_permissions"`
-	}
-	if err = p.call(ctx, "hello", map[string]any{}, &hello); err != nil || hello.Version != 1 || hello.SDK != "0.3.280" {
+	hello, err := p.hello(ctx, map[string]any{})
+	if err != nil {
 		p.close()
-		return nil, fmt.Errorf("Claude bridge 握手不兼容: %v", err)
+		return nil, err
 	}
-	p.settingsFileConsumer = hello.SettingsFileConsumer
-	p.installedSettings = hello.InstalledSettings
-	p.installedSettingsRecovery = hello.InstalledSettingsRecovery
-	p.originalQueryRecovery = hello.OriginalQueryRecovery
-	p.pendingPermissions = hello.PendingPermissions
+	if hello.PersistentControl == 1 {
+		controller, err := attachClaudeController(ctx, i, dir)
+		if err != nil {
+			p.close()
+			return nil, err
+		}
+		controller.cmd, controller.exited = cmd, p.exited
+		_ = in.Close()
+		_ = out.Close()
+		return controller, nil
+	}
 	return p, nil
 }
 
@@ -159,6 +170,12 @@ func (p *claudeTransport) read(reader io.Reader) {
 func (p *claudeTransport) call(ctx context.Context, method string, params any, out any) error {
 	if err := ctx.Err(); err != nil {
 		return &NotSent{Reason: err.Error()}
+	}
+	if p.controller != nil {
+		if err := p.controller.verify(); err != nil {
+			p.fail(err)
+			return &NotSent{Reason: err.Error()}
+		}
 	}
 	id := uuid.NewString()
 	ch := make(chan bridgeResponse, 1)
@@ -204,6 +221,10 @@ func (p *claudeTransport) call(ctx context.Context, method string, params any, o
 }
 
 func (p *claudeTransport) close() {
+	if p.controller != nil {
+		p.closeController()
+		return
+	}
 	_ = p.input.Close()
 	select {
 	case <-p.exited:

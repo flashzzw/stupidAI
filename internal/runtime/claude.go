@@ -48,9 +48,16 @@ func (c *Claude) client(ctx context.Context, i Instance) (*claudeTransport, erro
 	if p := c.clients[i.ID]; p != nil {
 		select {
 		case <-p.done:
-			p.close()
+			if p.controller != nil {
+				p.detach()
+			} else {
+				p.close()
+			}
 			delete(c.clients, i.ID)
 		default:
+			if p.controller != nil && p.controller.binding != claudeControllerBinding(i, p.controller.dir) {
+				return nil, fmt.Errorf("Claude 原 bridge 的启动实例或环境与当前选择不一致；保留原执行，请核对原绑定")
+			}
 			return p, nil
 		}
 	}
@@ -370,15 +377,35 @@ func (c *Claude) Reconcile(ctx context.Context, in Intent, receipt Receipt) (Res
 	}
 	if in.Kind == "respond" {
 		resolved := view.ExecutionClear
+		inFlight := false
 		if in.Pending != nil {
 			for _, turn := range view.Turns {
-				if turn.ID == in.Pending.NativeTurn && turn.Status != "inProgress" {
-					resolved = true
+				if turn.ID == in.Pending.NativeTurn {
+					if turn.Status == "inProgress" {
+						inFlight = true
+					} else {
+						resolved = true
+					}
 				}
 			}
 		}
 		if view.Evidence.Complete && resolved {
 			r.State, r.Status = "finished", "succeeded"
+		} else if view.Evidence.Complete && inFlight && snapshot.Live && in.Pending.NativeID == id && snapshot.Active == in.Pending.NativeTurn &&
+			(snapshot.Connection == in.Pending.ConnectionID) && (receipt.NativeTurn == "" || receipt.NativeTurn == in.Pending.NativeTurn) {
+			// The SDK has accepted this exact response, but the original turn
+			// (possibly a long-running tool) has not ended. Keep it in flight;
+			// lack of a turn result is neither failed delivery nor completion.
+			var requestID string
+			if json.Unmarshal(in.Pending.RequestID, &requestID) == nil && requestID != "" && in.Pending.ID == scope.Instance.ID+"/"+in.Pending.ConnectionID+"/"+requestID {
+				for _, request := range snapshot.Pending {
+					if request.ID == requestID && request.Connection == in.Pending.ConnectionID && request.Operation == in.Pending.NativeTurn && request.Tool == in.Pending.Kind && request.Status == "submitted" {
+						r.State, r.Receipt.NativeTurn = "running", in.Pending.NativeTurn
+						r.Evidence.Detail = "原请求回复已提交，原输入仍在运行；等待原生终态，不重复提交回复"
+						break
+					}
+				}
+			}
 		}
 		return r, nil
 	}
