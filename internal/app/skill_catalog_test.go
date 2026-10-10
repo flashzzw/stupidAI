@@ -27,6 +27,7 @@ func TestSessionSkillCatalogPreservesBindingsAndRejectsStaleResults(t *testing.T
 			before := a.Snapshot()
 			f.read = func(scope runtime.Scope) (runtime.SkillSourceCatalog, error) {
 				out := runtime.SkillSourceCatalog{NativeID: scope.NativeID, Cwd: scope.Cwd, Source: "claude.sdk.current_query", Items: []runtime.SkillSourceItem{}, Limitations: []string{"not a complete scan"}}
+				out.Instructions = &runtime.InstructionSourceSample{Available: true, Items: []runtime.InstructionSourceItem{{Path: "/parent/CLAUDE.md", Source: "Project", Tokens: 18}}}
 				switch mode {
 				case "wrong-id":
 					out.NativeID = "another"
@@ -43,12 +44,15 @@ func TestSessionSkillCatalogPreservesBindingsAndRejectsStaleResults(t *testing.T
 				}
 				return out, nil
 			}
-			_, err := a.ReadSessionSkillCatalog(context.Background(), id)
+			out, err := a.ReadSessionSkillCatalog(context.Background(), id)
 			if (err == nil) != (mode == "read-only") {
 				t.Fatalf("catalog validation: %v", err)
 			}
 			if mode == "read-only" && digest(before) != digest(a.Snapshot()) {
 				t.Fatal("catalog wrote Application state")
+			}
+			if mode == "read-only" && (out.Instructions == nil || !out.Instructions.Available || out.Instructions.Items[0].Path != "/parent/CLAUDE.md") {
+				t.Fatal("read-only instruction sources lost in Application response")
 			}
 			if f.creates.Load() != 1 || f.sends.Load() != 0 {
 				t.Fatal("catalog dispatched execution")

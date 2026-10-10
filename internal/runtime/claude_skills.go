@@ -6,10 +6,11 @@ import (
 )
 
 type claudeSkillInventory struct {
-	Available    bool                     `json:"available"`
-	At           string                   `json:"at"`
-	Commands     []claudeSkillCommand     `json:"commands"`
-	Descriptions []claudeSkillDescription `json:"descriptions"`
+	Available    bool                      `json:"available"`
+	At           string                    `json:"at"`
+	Commands     []claudeSkillCommand      `json:"commands"`
+	Descriptions []claudeSkillDescription  `json:"descriptions"`
+	Instructions *claudeInstructionSources `json:"instructions,omitempty"`
 }
 
 type claudeSkillCommand struct {

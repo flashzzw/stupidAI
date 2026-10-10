@@ -37,6 +37,9 @@ func (c *Claude) ReadSkillCatalog(ctx context.Context, scope Scope) (SkillSource
 	if result.Config.ID != scope.NativeID || result.Config.Cwd != scope.Cwd || result.Config.Model != scope.Route.Model || result.Config.Endpoint != scope.Route.Endpoint || result.Config.Executable != scope.Instance.Executable || result.Config.SettingsFile != scope.Instance.SettingsFile || !slices.Equal(result.Config.MCPSelections, scope.MCPSelections) || !slices.Equal(result.Config.SkillSelections, scope.SkillSelections) || !EqualPluginSelections(result.Config.PluginSelections, scope.PluginSelections) {
 		return SkillSourceCatalog{}, fmt.Errorf("Skill 清单不属于当前保存的原生配置")
 	}
+	if result.Config.SettingsGuardVersion != scope.SettingsGuardVersion || !slices.Equal(result.Config.SettingsSources, scope.ClaudeSettingsSources) || !claudeInstalledConfigMatches(scope, result.claudeSnapshot) {
+		return SkillSourceCatalog{}, fmt.Errorf("来源清单不属于当前保存的设置与安装绑定")
+	}
 	return claudeSkillCatalog(scope, result.Inventory)
 }
 
@@ -46,6 +49,7 @@ func claudeSkillCatalog(scope Scope, inventory claudeSkillInventory) (SkillSourc
 		"SDK 未报告完整来源路径；快照绑定入口只来自已保存选择，不据显示名推断其他文件路径。",
 		"命令或描述出现不代表正文已加载、方法已使用或 Gate 已通过；不能用全局白名单代替独立排除。",
 	}}
+	out.Instructions = projectClaudeInstructions(inventory.Instructions)
 	if !inventory.Available || inventory.Commands == nil || inventory.Descriptions == nil || len(inventory.Commands)+len(inventory.Descriptions) > 2048 {
 		return out, fmt.Errorf("原生 Skill 清单不完整或超过读取上限")
 	}

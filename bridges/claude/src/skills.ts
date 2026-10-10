@@ -8,7 +8,27 @@ export type SkillSelection = { asset_id: string; name: string; native_key: strin
   source: 'userSettings' | 'projectSettings' | 'plugin'; source_path: string; discovery_path: string;
   delivery?: 'local_plugin'; plugin_name?: string; resource_root?: string; resource_kind?: 'file' | 'directory'; resource_hash?: string };
 export type SkillInventory = { available: boolean; at: string;
-  commands: { name: string; description?: string; builtin: boolean; aliases: string[] }[]; descriptions: { name: string; source: string; plugin_name?: string }[] };
+  commands: { name: string; description?: string; builtin: boolean; aliases: string[] }[]; descriptions: { name: string; source: string; plugin_name?: string }[];
+  instructions?: { available: boolean; items: { path: string; source: string; tokens: number }[] } };
+
+function instructionSources(value: unknown): NonNullable<SkillInventory['instructions']> {
+  const unavailable = { available: false, items: [] };
+  if (!Array.isArray(value) || value.length > 256) return unavailable;
+  const seen = new Set<string>();
+  try {
+    const items = value.map(raw => {
+      const item = record(raw);
+      if (typeof item.path !== 'string' || !isAbsolute(item.path) || item.path.length > 4096 || item.path.includes('\0') ||
+        typeof item.type !== 'string' || !item.type || item.type.length > 100 || item.type.includes('\0') ||
+        !Number.isSafeInteger(item.tokens) || Number(item.tokens) < 0) throw Error('invalid instruction metadata');
+      const key = item.path + '\0' + item.type;
+      if (seen.has(key)) throw Error('duplicate instruction source');
+      seen.add(key);
+      return { path: item.path, source: item.type, tokens: Number(item.tokens) };
+    });
+    return { available: true, items };
+  } catch { return unavailable; }
+}
 
 export function skillSelections(value: unknown): SkillSelection[] {
   if (!Array.isArray(value) || value.length > 16) throw new NotSent('invalid Skill selections');
@@ -104,6 +124,9 @@ export async function skillInventory(run?: Query, config?: SessionConfig, includ
     // only an inventory of frontmatter; they are never method usage evidence.
     const context = await run.getContextUsage({ detail: 'summary' });
     if (!Array.isArray(commands) || context.skills && !Array.isArray(context.skills.skillFrontmatter)) return out;
+    // Keep instruction observations out of persisted selection inventories.
+    // Paths and local token estimates do not identify the loaded file bytes.
+    if (includeDescriptions) out.instructions = instructionSources(context.memoryFiles);
     out.commands = commands.map(c => ({ name: c.name, ...(includeDescriptions ? { description: c.description ?? '' } : {}), builtin: c.builtin === true, aliases: c.aliases ?? [] }));
     out.descriptions = (context.skills?.skillFrontmatter ?? []).map(s => ({ name: s.name, source: s.source, ...(typeof record(s).pluginName === 'string' ? { plugin_name: record(s).pluginName as string } : {}) }));
     out.available = out.commands.every(c => typeof c.name === 'string' && !!c.name && Array.isArray(c.aliases) && c.aliases.every(a => typeof a === 'string' && !!a)) && out.descriptions.every(s => typeof s.name === 'string' && !!s.name && typeof s.source === 'string');

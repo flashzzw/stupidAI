@@ -5,13 +5,25 @@ import "context"
 // A source catalog samples one existing native query. It is separate from
 // directory discovery and from proof that a Skill body was loaded or used.
 type SkillSourceCatalog struct {
-	NativeID    string            `json:"native_id"`
-	Cwd         string            `json:"cwd"`
-	Source      string            `json:"source"`
-	At          string            `json:"at"`
-	Complete    bool              `json:"complete"`
-	Items       []SkillSourceItem `json:"items"`
-	Limitations []string          `json:"limitations"`
+	NativeID     string                   `json:"native_id"`
+	Cwd          string                   `json:"cwd"`
+	Source       string                   `json:"source"`
+	At           string                   `json:"at"`
+	Complete     bool                     `json:"complete"`
+	Items        []SkillSourceItem        `json:"items"`
+	Limitations  []string                 `json:"limitations"`
+	Instructions *InstructionSourceSample `json:"instructions,omitempty"`
+}
+
+type InstructionSourceSample struct {
+	Available bool                    `json:"available"`
+	Items     []InstructionSourceItem `json:"items"`
+}
+
+type InstructionSourceItem struct {
+	Path   string `json:"path"`
+	Source string `json:"source"`
+	Tokens int64  `json:"tokens"`
 }
 
 type SkillSourceItem struct {

@@ -19,7 +19,8 @@ class Bridge:
         self.log = (root / "bridge.stderr").open("a")
         self.proc = subprocess.Popen(["node", str(script), str(root / "bridge-state")], env=env,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.log, text=True, start_new_session=True)
-        assert self.call("hello", {}) == {"version": 1, "sdk": "0.3.280"}
+        hello = self.call("hello", {})
+        assert hello.get("version") == 1 and hello.get("sdk") == "0.3.280"
 
     def call(self, method, params):
         self.seq += 1
