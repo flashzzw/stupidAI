@@ -1,6 +1,7 @@
 import { ConfigurationFailureDetails } from "./ConfigurationFailureDetails";
 import { HookExecutions, type HookExecution } from './HookExecutions';
 import { InstructionLoads, type InstructionLoadHistory } from './InstructionLoads';
+import { ConfigurationNotices, type ConfigurationNoticeHistory } from './ConfigurationNotices';
 import { ClaudeSettingsGuard, type SettingsGuard } from './ClaudeSettingsGuard';
 import type { ConfigurationFailure } from './ConfigurationFailureDetails';
 import { ExecutionSourceCheck } from './ExecutionSourceCheck';
@@ -162,13 +163,14 @@ function CodexProjectHookSources({ snapshot }: { snapshot: ExecutionSnapshot }) 
   </details>;
 }
 
-export function ExecutionDetails({ sessionId, generation, snapshot, evidence, skillEvidence, pluginEvidence, hookExecutions, instructionLoads, settingsGuard, configurationFailure, connected, read, pending, busy, command, hold, history, attempts, nativeStatus, sessionStatus, assets }: {
+export function ExecutionDetails({ sessionId, generation, snapshot, evidence, skillEvidence, pluginEvidence, hookExecutions, instructionLoads, configurationNotices, settingsGuard, configurationFailure, connected, read, pending, busy, command, hold, history, attempts, nativeStatus, sessionStatus, assets }: {
   sessionId: string; generation: number; snapshot?: ExecutionSnapshot; connected: boolean;
   evidence?: CapabilityEvidence[];
   skillEvidence?: SkillEvidence[];
   pluginEvidence?: PluginEvidence[];
   hookExecutions?: HookExecution[];
   instructionLoads?: InstructionLoadHistory;
+  configurationNotices?: ConfigurationNoticeHistory;
   settingsGuard?: SettingsGuard;
   configurationFailure?: ConfigurationFailure;
   read: <T>(path: string, body?: unknown) => Promise<T>;
@@ -178,7 +180,9 @@ export function ExecutionDetails({ sessionId, generation, snapshot, evidence, sk
   const installed = snapshot?.claude_installed_plugin_settings?.binding;
   const plugins = [...(snapshot?.plugin_selections?.filter(item => !item.skill_asset) ?? []), ...(installed?.selections ?? [])];
   const skillAssets = snapshot?.plugin_selections?.filter(item => item.skill_asset) ?? [];
-  return <details className="execution-snapshot"><summary>执行配置快照</summary>
+  const queryLive = connected && nativeStatus === 'sdk_live' && sessionStatus !== 'unknown';
+  const noticeCount = queryLive && configurationNotices?.current_query_id ? configurationNotices.current_count : 0;
+  return <details className="execution-snapshot"><summary>执行配置快照{noticeCount > 0 ? ` · 当前查询收到 ${noticeCount} 条配置通知` : ''}</summary>
     {snapshot ? <>
       <p className="hint">此处展示最后确认的执行版本，旧版本保留在下方历史中；来源文件仍可能变化，尚未核对全部配置继承和权限合并。</p>
       {snapshot.instance.kind === 'codex' && nativeStatus === 'notLoaded' && !pending && attempts?.some(attempt => attempt.change.base_snapshot_id === snapshot.id && attempt.change.status === 'recovered') ? <p role="status" className="hint">原配置恢复已确认；原线程当前未加载，能力仍待核对。请明确恢复自动化后继续。</p> : null}
@@ -198,6 +202,7 @@ export function ExecutionDetails({ sessionId, generation, snapshot, evidence, sk
       {snapshot.instance.kind === 'codex' ? <SkillDiscovery key={`skill-discovery/${snapshot.id}/${connected}`} sessionId={sessionId} connected={connected} read={read} /> : null}
       {snapshot.instance.kind === 'claude' ? <ClaudeSkillCatalog key={`claude-skill-catalog/${snapshot.id}/${connected}`} sessionId={sessionId} connected={connected} read={read} /> : null}
       {snapshot.instance.kind === 'claude' ? <InstructionLoads history={instructionLoads} live={connected && nativeStatus === 'sdk_live' && sessionStatus !== 'unknown'} /> : null}
+      {snapshot.instance.kind === 'claude' ? <ConfigurationNotices history={configurationNotices} live={queryLive} /> : null}
       {snapshot.instance.kind === 'claude' ? <ClaudeInstalledPlugins key={`installed/${snapshot.id}/${generation}/${connected}`} sessionId={sessionId} baseSnapshotId={snapshot.id} hasPendingChange={Boolean(pending)} busy={busy} connected={connected} read={read} /> : null}
       {snapshot.instance.kind === 'claude' || snapshot.instance.kind === 'codex' ? <HookExecutions executions={hookExecutions} backend={snapshot.instance.kind} connected={connected && sessionStatus !== 'unknown'} /> : null}
       {snapshot.instance.kind === 'claude' || snapshot.instance.kind === 'codex' ? <HookCatalog key={`hooks/${snapshot.id}/${connected}`} sessionId={sessionId} backend={snapshot.instance.kind} connected={connected} read={read} /> : null}

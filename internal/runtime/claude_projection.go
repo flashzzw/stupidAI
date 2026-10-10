@@ -36,15 +36,16 @@ type claudeEvent struct {
 	} `json:"tasks"`
 }
 type claudeEntry struct {
-	PermissionBaseline *PermissionApprovalEvidence `json:"permission_baseline,omitempty"`
-	QueryID            string                      `json:"query_id,omitempty"`
-	At                 string                      `json:"at,omitempty"`
-	Kind               string                      `json:"kind"`
-	Operation          string                      `json:"operation"`
-	Text               string                      `json:"text"`
-	Event              claudeEvent                 `json:"event"`
-	InstructionLoad    *claudeInstructionLoad      `json:"load,omitempty"`
-	InstructionPrompt  *claudeInstructionPrompt    `json:"link,omitempty"`
+	PermissionBaseline  *PermissionApprovalEvidence `json:"permission_baseline,omitempty"`
+	QueryID             string                      `json:"query_id,omitempty"`
+	At                  string                      `json:"at,omitempty"`
+	Kind                string                      `json:"kind"`
+	Operation           string                      `json:"operation"`
+	Text                string                      `json:"text"`
+	Event               claudeEvent                 `json:"event"`
+	InstructionLoad     *claudeInstructionLoad      `json:"load,omitempty"`
+	InstructionPrompt   *claudeInstructionPrompt    `json:"link,omitempty"`
+	ConfigurationNotice *claudeConfigurationNotice  `json:"notice,omitempty"`
 }
 type claudeRequest struct {
 	PermissionGuard *PermissionApprovalEvidence `json:"permission_guard,omitempty"`
@@ -90,6 +91,7 @@ type claudeSnapshot struct {
 	HistoryDigest                string                       `json:"history_digest"`
 	SettingsGuard                *ClaudeSettingsGuardEvidence `json:"settings_guard,omitempty"`
 	InstructionObserver          *claudeInstructionObserver   `json:"instruction_observer,omitempty"`
+	ConfigurationObserver        *claudeConfigurationObserver `json:"configuration_observer,omitempty"`
 	ConfigurationRecoveryFailure *ConfigurationFailure        `json:"configuration_recovery_failure,omitempty"`
 	ConfigurationFailure         *ConfigurationFailure        `json:"configuration_failure,omitempty"`
 }
@@ -348,6 +350,7 @@ func projectClaude(scope Scope, s claudeSnapshot) View {
 	}
 	v.HookExecutions = claudeHookExecutions(scope, s)
 	v.InstructionLoads = claudeInstructionLoads(scope, s)
+	v.ConfigurationNotices = claudeConfigurationNotices(scope, s)
 	if scope.SettingsGuardVersion != 0 && s.SettingsGuard != nil && s.SettingsGuard.Version == scope.SettingsGuardVersion {
 		v.SettingsGuard = s.SettingsGuard
 	}

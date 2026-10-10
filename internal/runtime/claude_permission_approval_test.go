@@ -135,14 +135,16 @@ for line in sys.stdin:
 }
 
 func TestClaudeApprovalProjectionRequiresOriginalInputObservation(t *testing.T) {
-	for _, mode := range []string{"observed", "changed", "unavailable", "missing", "wrong-query", "wrong-config", "no-input", "wrong-input", "bad-hash", "bad-time", "false-complete", "unknown-version"} {
+	for _, mode := range []string{"observed", "changed", "unavailable", "missing", "wrong-query", "wrong-config", "no-input", "wrong-input", "bad-hash", "bad-time", "false-complete", "unknown-version", "duplicate-input", "unavailable-baseline"} {
 		t.Run(mode, func(t *testing.T) {
 			in := ownedClaudeDenial()
 			query, config := uuid.NewString(), strings.Repeat("b", 64)
 			g := PermissionApprovalEvidence{Version: 1, QueryID: query, ConfigurationID: config, State: "observed", BaselineAt: "2026-10-10T00:00:00Z", BaselineHash: strings.Repeat("a", 64), CheckedAt: "2026-10-10T00:00:01Z", CheckedHash: strings.Repeat("a", 64)}
 			baseline := g
+			registered, recordingFailed := true, false
 			s := claudeSnapshot{Live: true, Connection: in.Pending.ConnectionID, InstructionObserver: &claudeInstructionObserver{Version: 1, CurrentQueryID: query, CurrentConfigurationID: config},
-				Entries: []claudeEntry{{Kind: "input", Operation: in.Pending.NativeTurn, QueryID: query, PermissionBaseline: &baseline}}}
+				ConfigurationObserver: &claudeConfigurationObserver{Version: 1, Registered: &registered, RecordingFailed: &recordingFailed, CurrentQueryID: query, CurrentConfigurationID: config},
+				Entries:               []claudeEntry{{Kind: "input", Operation: in.Pending.NativeTurn, QueryID: query, PermissionBaseline: &baseline}}}
 			r := claudeRequest{ID: "original-request", Operation: in.Pending.NativeTurn, Connection: in.Pending.ConnectionID, Tool: "Read", Status: "pending", PermissionGuard: &g}
 			switch mode {
 			case "changed":
@@ -168,6 +170,10 @@ func TestClaudeApprovalProjectionRequiresOriginalInputObservation(t *testing.T) 
 				g.Complete = true
 			case "unknown-version":
 				g.Version = 2
+			case "duplicate-input":
+				s.Entries = append(s.Entries, s.Entries[0])
+			case "unavailable-baseline":
+				baseline.State = "unavailable"
 			}
 			s.Pending = []claudeRequest{r}
 			out := projectClaude(in.Scope, s).Pending[0].PermissionGuard

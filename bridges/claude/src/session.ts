@@ -2,6 +2,7 @@ import { sanitizeHookEvent, unfinishedHooks } from './hook_execution.js';
 import { localSettingsHooks, settingsGuardEvidence, type SettingsChange } from './settings_guard.js';
 import { requiredToolApprovalHooks } from './tool_approvals.js';
 import { instructionLoadHooks, instructionPromptHooks, type InstructionLoad, type InstructionPromptLink } from './instruction_loads.js';
+import { configurationNoticeHooks, type ConfigurationNotice } from './configuration_notices.js';
 import { spawnSettingsConsumer } from './settings_file_consumer.js';
 import { installedSettings, installedSettingsRecovery, verifyInstalledSettings, verifyInstalledSettingsAdoption } from './installed_settings.js';
 import { settingsSources, verifySettingsSources, adoptedSettingsHookSources } from './settings_sources.js';
@@ -9,7 +10,7 @@ import { selectedPlugins, executionPlugins, pluginInventory, pluginSelections, p
 import { mcpDefinitions, mcpInventory, mcpMatches, mcpSelections, mcpToolPrefix, verifyMCP } from './mcp.js';
 import { prepareSkillResources } from './skill_resources.js';
 import { NativeHookChannel } from './hook_catalog.js';
-import { permissionSample, permissionApproval, observePermissionApproval, permissionApprovalFailure, type PermissionSample, type PermissionApproval } from './permission_approvals.js';
+import { permissionSample, permissionApproval, observePermissionApproval, configurationNoticeApproval, permissionApprovalFailure, type PermissionSample, type PermissionApproval } from './permission_approvals.js';
 import { applySkillSelections, inheritedSkills, skillChangeMatches, skillInventory, skillSelections, verifySkillSources, verifySkills } from './skills.js';
 import { fingerprint, readMetadata, writeMetadata, configurationFailure, originalQueryRecovery, originalQueryRecoveryMatches, type ConfigurationChange, type ConfigurationFailure, type ConfigurationRecovery } from './configuration.js';
 import { randomUUID } from 'node:crypto';
@@ -25,6 +26,7 @@ type Entry = ({ kind: 'input'; operation: string; text: string; permission_basel
   { kind: 'settings_change'; change: SettingsChange } |
   { kind: 'instruction_load'; load: InstructionLoad } |
   { kind: 'instruction_prompt'; link: InstructionPromptLink } |
+  { kind: 'configuration_notice'; notice: ConfigurationNotice } |
   { kind: 'event'; operation: string; event: SDKMessage } |
   { kind: 'initialized' | 'closed'; connection: string; pid?: number }) & { at?: string; query_id?: string };
 type Request = { id: string; connection: string; operation: string; tool: string; input: Record<string, unknown>;
@@ -55,7 +57,7 @@ export class Session {
   private fault = '';
   private settingsRecordFailed = false;
   private instructionRecordFailed = false;
-  private instructionQuery?: { id: string; configuration: string };
+  private instructionQuery?: { id: string; configuration: string; configurationObserver: {registered: boolean; recordingFailed: boolean; epoch: number} };
   private tasks = new Map<string, string>();
 
   constructor(private readonly root: string, config: SessionConfig, creating: boolean) {
@@ -128,12 +130,28 @@ export class Session {
     if (permissions.ask !== undefined && (!Array.isArray(permissions.ask) || permissions.ask.some(x => typeof x !== 'string'))) throw new NotSent('invalid settings permissions.ask');
     const readOnlySettings: Settings = { permissions: { ...permissions, ask: [...new Set([...(Array.isArray(permissions.ask) ? permissions.ask : []), 'Bash', 'Write', 'Edit', 'NotebookEdit'])] } };
     const approvalHooks = requiredToolApprovalHooks(config);
-    const instructionQuery = { id: randomUUID(), configuration: fingerprint(config) };
+    const instructionQuery = { id: randomUUID(), configuration: fingerprint(config), configurationObserver: {registered: false, recordingFailed: false, epoch: 0} };
     if (!config.probe) this.instructionQuery = instructionQuery;
     const instructionContext = {native_id: config.id, cwd: config.cwd, query_id: instructionQuery.id, configuration_id: instructionQuery.configuration};
     const instructionPrompts = config.probe ? {} : instructionPromptHooks(instructionContext,
       link => this.append({kind:'instruction_prompt',link}), () => { this.instructionRecordFailed = true; });
     const preToolHooks = [...approvalHooks.PreToolUse ?? [], ...instructionPrompts.PreToolUse ?? []];
+    const localHooks = config.settings_guard_version ? localSettingsHooks(config.id,
+      change => this.append({kind: 'settings_change', change}),
+      () => { this.settingsRecordFailed = true; this.fault = '设置变化记录写入失败，不能接受输入'; }) : {};
+    const configurationHooks = config.probe ? {} : configurationNoticeHooks(instructionContext,
+      notice => {
+        this.append({kind: 'configuration_notice', notice});
+        instructionQuery.configurationObserver.epoch++;
+        this.updatePermissionGuards(instructionQuery.id, guard => configurationNoticeApproval(guard, notice.id));
+      }, () => {
+        // A delayed callback belongs to this query, even after a new query has
+        // opened. It must never mark the new observer or input as failed.
+        instructionQuery.configurationObserver.recordingFailed = true;
+        instructionQuery.configurationObserver.epoch++;
+        this.updatePermissionGuards(instructionQuery.id, guard => configurationNoticeApproval(guard));
+      });
+    const configChangeHooks = [...localHooks.ConfigChange ?? [], ...configurationHooks.ConfigChange ?? []];
     this.run = query({ prompt: input(), options: {
       cwd: config.cwd, pathToClaudeCodeExecutable: config.executable,
       systemPrompt: { type: 'preset', preset: 'claude_code' },
@@ -149,11 +167,10 @@ export class Session {
       ...(config.permission === 'read_only' && !settingsFile ? { settings: { ...(config.probe ? { disableAllHooks: true } : {}),
         permissions: { ask: ['Bash', 'Write', 'Edit', 'NotebookEdit'] } } } : {}),
       ...(settingsFile ? { settings: settingsFile } : {}),
-      ...(!config.probe || config.settings_guard_version || approvalHooks.PreToolUse ? { hooks: { ...(config.settings_guard_version ? localSettingsHooks(config.id,
-        change => this.append({kind:'settings_change',change}),
-        () => { this.settingsRecordFailed = true; this.fault = '设置变化记录写入失败，不能接受输入'; }) : {}), ...approvalHooks,
+      ...(!config.probe || config.settings_guard_version || approvalHooks.PreToolUse ? { hooks: { ...localHooks, ...approvalHooks,
         ...(!config.probe ? instructionLoadHooks(instructionContext,
           load => this.append({kind:'instruction_load',load}), () => { this.instructionRecordFailed = true; }) : {}),
+        ...(configChangeHooks.length ? {ConfigChange: configChangeHooks} : {}),
         ...(preToolHooks.length ? {PreToolUse: preToolHooks} : {}) } } : {}),
       canUseTool: async (tool, args, options) => {
         const id = options.requestId;
@@ -194,6 +211,7 @@ export class Session {
     this.reading = this.readEvents(this.run, config.probe ? undefined : instructionQuery.id);
     try {
       const initialized = await this.run.initializationResult();
+      instructionQuery.configurationObserver.registered = initialized?.hooks_applied === true;
       if (approvalHooks.PreToolUse && initialized?.hooks_applied !== true) throw new NotSent('原生 CLI 未确认逐次工具审批约束');
       if (plugins.length && initialized.plugins_applied !== true) throw new NotSent('原生 CLI 未确认全部 Skill 加载包');
       // Load the exact native file (including its path semantics), then apply
@@ -290,6 +308,7 @@ export class Session {
     await this.verifyPluginBinding();
     if (unfinishedHooks(this.entries).length) throw new NotSent('原生 hook 尚未报告终态，不能接受新输入');
     const query = this.instructionQuery;
+    const noticeEpoch = query?.configurationObserver.epoch;
     let sample: PermissionSample | undefined;
     if (!this.config.probe) {
       try { sample = permissionSample((await this.permissionCatalog()).inventory); } catch { /* Tools requiring approval remain unapprovable without an original observation. */ }
@@ -298,6 +317,9 @@ export class Session {
     verifySettingsSources(this.config.settings_sources);
     verifyInstalledSettings(this.config);
     this.inputPermissions = !this.config.probe && query ? {operation, guard: permissionApproval(query.id, query.configuration, sample)} : undefined;
+    if (this.inputPermissions && query && (!query.configurationObserver.registered || query.configurationObserver.recordingFailed || noticeEpoch !== query.configurationObserver.epoch)) {
+      this.inputPermissions.guard = configurationNoticeApproval(this.inputPermissions.guard);
+    }
     this.append({ kind: 'input', operation, text: body, ...(!this.config.probe && query ? {query_id:query.id} : {}),
       ...(this.inputPermissions ? {permission_baseline:{...this.inputPermissions.guard}} : {}) });
     this.active = operation;
@@ -352,12 +374,16 @@ export class Session {
   }
 
   private observePermissions(sample?: PermissionSample, queryID = this.instructionQuery?.id) {
-    if (this.inputPermissions && this.inputPermissions.guard.query_id === queryID) this.inputPermissions.guard = observePermissionApproval(this.inputPermissions.guard, sample);
+    this.updatePermissionGuards(queryID, guard => observePermissionApproval(guard, sample));
+  }
+
+  private updatePermissionGuards(queryID: string | undefined, update: (guard: PermissionApproval) => PermissionApproval) {
+    if (this.inputPermissions && this.inputPermissions.guard.query_id === queryID) this.inputPermissions.guard = update(this.inputPermissions.guard);
     for (const request of this.requests.values()) {
       if (request.status !== 'pending' || !request.permission_guard || request.permission_guard.query_id !== queryID) continue;
       const previous = request.permission_guard;
-      request.permission_guard = observePermissionApproval(previous, sample);
-      if (previous.state !== request.permission_guard.state) {
+      request.permission_guard = update(previous);
+      if (previous.state !== request.permission_guard.state || previous.configuration_notice_id !== request.permission_guard.configuration_notice_id) {
         try { this.append({kind:'permission_check',operation:request.operation,request_id:request.id,action:'invalidated',guard:{...request.permission_guard}}); }
         catch { request.permission_guard = {...request.permission_guard,state:'unavailable'}; }
       }
@@ -389,6 +415,10 @@ export class Session {
       entries: this.entries, stream: this.stream,
       ...(!this.config.probe ? {instruction_observer:{version:1, recording_failed:this.instructionRecordFailed,
         current_query_id:instructionCurrent ? this.instructionQuery!.id : '', current_configuration_id:instructionCurrent ? this.instructionQuery!.configuration : ''}} : {}),
+      ...(!this.config.probe ? {configuration_observer: {version: 1,
+        registered: instructionCurrent && this.instructionQuery!.configurationObserver.registered,
+        recording_failed: this.instructionQuery?.configurationObserver.recordingFailed ?? false,
+        current_query_id: instructionCurrent ? this.instructionQuery!.id : '', current_configuration_id: instructionCurrent ? this.instructionQuery!.configuration : ''}} : {}),
       ...(settingsGuard ? {settings_guard:settingsGuard} : {}),
       ...(recoveryFailure && this.configuration?.status!=='recovered' ? {configuration_recovery_failure:recoveryFailure} : {}),
       ...(failure && this.configuration?.status!=='verified' && this.configuration?.status!=='recovered' ? {configuration_failure:failure} : {}),

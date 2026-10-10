@@ -46,11 +46,12 @@ mock.module(require.resolve('@anthropic-ai/claude-agent-sdk'), {namedExports: {g
 }}});
 const {Session} = await import('../bridges/claude/dist/session.js');
 
-async function fixture(t, {source = false, send = true} = {}) {
+async function fixture(t, {source = false, send = true, settingsGuard = false} = {}) {
   const root = mkdtempSync(join(tmpdir(), 'netcap-pending-permissions-')), id = randomUUID();
   const state = {rules: rules('ask'), directories: [], errors: [], events: [], aborts: [], wire: [], starts: 0, decisions: [], held: []};
   states.set(id, state);
   const config = {id, source: id, cwd: root, executable: process.execPath, model: 'fixture', endpoint: 'http://127.0.0.1:1', permission: 'read_only', probe: false};
+  if (settingsGuard) config.settings_guard_version = 1;
   const settings = join(root, '.claude/settings.local.json');
   if (source) {
     mkdirSync(join(root, '.claude')); writeFileSync(settings, '{}', {mode: 0o600});
@@ -192,4 +193,108 @@ test('a later explicit input can be approved in the same query after refusing an
   assert.equal((await next.result).behavior,'allow');
   assert.equal(next.request.operation,operation); assert.equal(next.request.connection,old.request.connection);
   assert.equal(f.state.starts,1); assert.equal(f.state.decisions.length,2);
+});
+
+async function configurationNotice(f, value = {}) {
+  const hooks = f.state.options.hooks.ConfigChange;
+  assert.ok(hooks?.length, 'production query registers configuration notices');
+  const input = {hook_event_name:'ConfigChange',session_id:f.id,cwd:f.root,source:'policy_settings',file_path:join(f.root,'managed-settings.json'),...value};
+  const outputs=[];
+  for(const matcher of hooks) if(!matcher.matcher||new RegExp(matcher.matcher).test(input.source)) for(const hook of matcher.hooks) outputs.push(await hook(input,undefined,{signal:new AbortController().signal}));
+  return outputs;
+}
+
+test('a native configuration notice invalidates old approval even when the rule report stays identical', async t => {
+  const f=await fixture(t), p=await f.ask();
+  const before=await f.session.permissionCatalog();
+  assert.deepEqual(await configurationNotice(f),[{}]);
+  const after=await f.session.permissionCatalog();assert.deepEqual(after.inventory.items,before.inventory.items);
+  const snapshot=await f.session.snapshot(), notices=snapshot.entries.filter(e=>e.kind==='configuration_notice');
+  assert.equal(notices.length,1);assert.equal(notices[0].notice.query_id,before.query_id);
+  assert.equal(snapshot.pending[0].permission_guard.configuration_notice_id,notices[0].notice.id);
+  await assert.rejects(p.reply('allow'),/配置|权限/);assert.equal(f.state.decisions.length,0);
+  await p.reply('deny');assert.equal((await p.result).behavior,'deny');
+});
+
+test('configuration observation preserves the existing local block decision', async t => {
+  const f=await fixture(t,{source:true,settingsGuard:true}), p=await f.ask();
+  const responses=await configurationNotice(f,{source:'local_settings',file_path:f.settings});
+  assert.deepEqual(responses,[{decision:'block'},{}]);
+  const snapshot=await f.session.snapshot();
+  assert.equal(snapshot.settings_guard.changes.length,1);
+  assert.equal(snapshot.entries.filter(e=>e.kind==='configuration_notice').length,1);
+  await p.reply('deny');assert.equal((await p.result).behavior,'deny');
+});
+
+test('idle notices preserve unknown source labels without attaching private content or poisoning a later input', async t => {
+  const f=await fixture(t,{send:false});
+  await configurationNotice(f,{source:'future_settings',file_path:undefined,content:'PRIVATE_CONFIGURATION_BODY',prompt_id:undefined});
+  const before=await f.session.snapshot();const notice=before.entries.find(e=>e.kind==='configuration_notice').notice;
+  assert.equal(notice.source,'future_settings');assert.equal(notice.path,'');
+  assert.equal(JSON.stringify(before).includes('PRIVATE_CONFIGURATION_BODY'),false);
+  await f.session.send({operation:randomUUID(),text:'fresh explicit input',api_key:'fixture'});
+  const p=await f.ask();await p.reply('allow');assert.equal((await p.result).behavior,'allow');
+});
+
+test('notice recording failure returns no native config decision and still permits original refusal', async t => {
+  const f=await fixture(t),p=await f.ask(),journal=join(f.root,f.id+'.jsonl');
+  renameSync(journal,journal+'.saved');mkdirSync(journal);
+  try{
+    assert.deepEqual(await configurationNotice(f),[{}]);
+    const snapshot=await f.session.snapshot();assert.equal(snapshot.configuration_observer.recording_failed,true);
+    await assert.rejects(p.reply('allow'));await p.reply('deny');assert.equal((await p.result).behavior,'deny');
+  }finally{rmSync(journal,{recursive:true});renameSync(journal+'.saved',journal);}
+});
+
+test('a fresh explicit input gets its own observation after a configuration notice invalidates the previous request', async t => {
+  const f = await fixture(t), old = await f.ask();
+  await configurationNotice(f);
+  await old.reply('deny'); await old.result;
+  f.state.emit({type: 'result', session_id: f.id, subtype: 'success', queued_turn_count: 0}); await tick();
+  const operation = randomUUID(); await f.session.send({operation, text: 'fresh explicit input', api_key: 'fixture'});
+  const next = await f.ask();
+  assert.equal(next.request.operation, operation); assert.equal(next.request.permission_guard.configuration_notice_id, undefined);
+  await next.reply('allow'); assert.equal((await next.result).behavior, 'allow'); assert.equal(f.state.starts, 1);
+});
+
+test('late callbacks and recording failures from a retired query cannot invalidate a new query', async t => {
+  const f = await fixture(t, {send: false});
+  const oldOptions = f.state.options, old = (await f.session.snapshot()).configuration_observer;
+  const prepared = await f.session.prepareExecution();
+  await f.session.applyExecution({operation: randomUUID(), baseline: prepared.configuration_baseline, mcp_selections: [], api_key: 'fixture'});
+  await f.session.send({operation: randomUUID(), text: 'new query input', api_key: 'fixture'});
+  const next = await f.ask();
+  const stale = {...f, state: {...f.state, options: oldOptions}};
+  await configurationNotice(stale);
+  await configurationNotice(stale, {session_id: randomUUID()});
+  const snapshot = await f.session.snapshot();
+  assert.notEqual(snapshot.configuration_observer.current_query_id, old.current_query_id);
+  assert.equal(snapshot.configuration_observer.recording_failed, false);
+  assert.equal(snapshot.entries.findLast(e => e.kind === 'configuration_notice').notice.query_id, old.current_query_id);
+  await next.reply('allow'); assert.equal((await next.result).behavior, 'allow'); assert.equal(f.state.starts, 2);
+});
+
+test('a configuration notification during a delayed final rule read cannot be cleared by the identical reply', async t => {
+  const f = await fixture(t), p = await f.ask(); f.state.holdRead = true;
+  const response = assert.rejects(p.reply('allow'), /配置|权限/);
+  for (let n = 0; n < 100 && !f.state.held.length; n++) await tick();
+  assert.equal(f.state.held.length, 1);
+  await configurationNotice(f);
+  f.state.holdRead = false; f.state.held.splice(0).forEach(send => send()); await response;
+  assert.equal(f.state.decisions.length, 0);
+  await p.reply('deny'); assert.equal((await p.result).behavior, 'deny');
+});
+
+test('original-ID reopening preserves notification history without promoting it to the new query', async t => {
+  const f = await fixture(t, {send: false}); await configurationNotice(f);
+  const original = (await f.session.snapshot()).entries.find(e => e.kind === 'configuration_notice');
+  await f.session.close();
+  const restored = Session.restore(f.root, f.id);
+  try {
+    await restored.open('fixture');
+    const snapshot = await restored.snapshot();
+    assert.deepEqual(snapshot.entries.find(e => e.kind === 'configuration_notice'), original);
+    assert.equal(snapshot.config.id, f.id); assert.notEqual(snapshot.configuration_observer.current_query_id, original.notice.query_id);
+    assert.equal(snapshot.configuration_observer.registered, true); assert.equal(snapshot.entries.filter(e => e.kind === 'input').length, 0);
+  } finally {await restored.close();}
 });

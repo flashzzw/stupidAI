@@ -7,6 +7,7 @@ export type PermissionApproval = {
   version: 1; complete: false; query_id: string; configuration_id: string;
   baseline_at: string; baseline_hash: string; checked_at: string; checked_hash: string;
   state: 'observed' | 'changed' | 'unavailable';
+  configuration_notice_id?: string;
 };
 
 // Compare observations, not permission semantics. Keep duplicate rows, unknown
@@ -34,17 +35,21 @@ export function permissionApproval(query: string, configuration: string, sample?
 
 export function observePermissionApproval(guard: PermissionApproval, sample?: PermissionSample): PermissionApproval {
   let state = guard.state;
-  if (state === 'observed') {
-    if (!sample?.usable) state = 'unavailable';
-    else if (sample.hash !== guard.baseline_hash) state = 'changed';
-  }
+  if (state === 'observed' && !sample?.usable) state = 'unavailable';
+  if (state !== 'changed' && sample?.usable && guard.baseline_hash && sample.hash !== guard.baseline_hash) state = 'changed';
   // Once an original input/request loses its observation, later restoration
   // cannot turn it into a new approval request.
   return {...guard, state, checked_at: sample?.at ?? new Date().toISOString(), checked_hash: sample?.hash ?? ''};
 }
 
+export function configurationNoticeApproval(guard: PermissionApproval, noticeID?: string): PermissionApproval {
+  return {...guard, state: guard.state === 'changed' ? 'changed' : 'unavailable',
+    ...(!guard.configuration_notice_id && noticeID ? {configuration_notice_id: noticeID} : {})};
+}
+
 export function permissionApprovalFailure(guard?: PermissionApproval): string {
   return guard?.state === 'changed'
     ? '原输入等待期间已观察到权限规则变化，不能批准这条旧请求；请拒绝本次工具操作或中止原输入'
+    : guard?.configuration_notice_id ? '原输入等待期间已收到配置变化通知，旧审批依据失效；请拒绝本次工具操作或中止原输入'
     : '原输入的权限规则观察不完整，不能批准这条请求；请拒绝本次工具操作或中止原输入';
 }
