@@ -8,15 +8,16 @@ import (
 )
 
 type claudeEvent struct {
-	Type         string `json:"type"`
-	Subtype      string `json:"subtype"`
-	UUID         string `json:"uuid"`
-	SessionID    string `json:"session_id"`
-	HookID       string `json:"hook_id"`
-	HookEvent    string `json:"hook_event"`
-	HookOutcome  string `json:"outcome"`
-	HookExitCode *int   `json:"exit_code"`
-	Message      struct {
+	Type            string `json:"type"`
+	Subtype         string `json:"subtype"`
+	UUID            string `json:"uuid"`
+	SessionID       string `json:"session_id"`
+	UserMessageUUID string `json:"user_message_uuid"`
+	HookID          string `json:"hook_id"`
+	HookEvent       string `json:"hook_event"`
+	HookOutcome     string `json:"outcome"`
+	HookExitCode    *int   `json:"exit_code"`
+	Message         struct {
 		Role    string          `json:"role"`
 		Content json.RawMessage `json:"content"`
 	} `json:"message"`
@@ -35,11 +36,14 @@ type claudeEvent struct {
 	} `json:"tasks"`
 }
 type claudeEntry struct {
-	At        string      `json:"at,omitempty"`
-	Kind      string      `json:"kind"`
-	Operation string      `json:"operation"`
-	Text      string      `json:"text"`
-	Event     claudeEvent `json:"event"`
+	QueryID           string                   `json:"query_id,omitempty"`
+	At                string                   `json:"at,omitempty"`
+	Kind              string                   `json:"kind"`
+	Operation         string                   `json:"operation"`
+	Text              string                   `json:"text"`
+	Event             claudeEvent              `json:"event"`
+	InstructionLoad   *claudeInstructionLoad   `json:"load,omitempty"`
+	InstructionPrompt *claudeInstructionPrompt `json:"link,omitempty"`
 }
 type claudeRequest struct {
 	ID         string          `json:"id"`
@@ -83,6 +87,7 @@ type claudeSnapshot struct {
 	ConfigurationBaseline        string                       `json:"configuration_baseline"`
 	HistoryDigest                string                       `json:"history_digest"`
 	SettingsGuard                *ClaudeSettingsGuardEvidence `json:"settings_guard,omitempty"`
+	InstructionObserver          *claudeInstructionObserver   `json:"instruction_observer,omitempty"`
 	ConfigurationRecoveryFailure *ConfigurationFailure        `json:"configuration_recovery_failure,omitempty"`
 	ConfigurationFailure         *ConfigurationFailure        `json:"configuration_failure,omitempty"`
 }
@@ -337,6 +342,7 @@ func projectClaude(scope Scope, s claudeSnapshot) View {
 		}
 	}
 	v.HookExecutions = claudeHookExecutions(scope, s)
+	v.InstructionLoads = claudeInstructionLoads(scope, s)
 	if scope.SettingsGuardVersion != 0 && s.SettingsGuard != nil && s.SettingsGuard.Version == scope.SettingsGuardVersion {
 		v.SettingsGuard = s.SettingsGuard
 	}

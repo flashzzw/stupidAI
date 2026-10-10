@@ -1,5 +1,6 @@
 import { ConfigurationFailureDetails } from "./ConfigurationFailureDetails";
 import { HookExecutions, type HookExecution } from './HookExecutions';
+import { InstructionLoads, type InstructionLoadHistory } from './InstructionLoads';
 import { ClaudeSettingsGuard, type SettingsGuard } from './ClaudeSettingsGuard';
 import type { ConfigurationFailure } from './ConfigurationFailureDetails';
 import { ExecutionSourceCheck } from './ExecutionSourceCheck';
@@ -132,12 +133,13 @@ function CodexProjectHookSources({ snapshot }: { snapshot: ExecutionSnapshot }) 
   </details>;
 }
 
-export function ExecutionDetails({ sessionId, generation, snapshot, evidence, skillEvidence, pluginEvidence, hookExecutions, settingsGuard, configurationFailure, connected, read, pending, busy, command, hold, history, attempts, nativeStatus, sessionStatus, assets }: {
+export function ExecutionDetails({ sessionId, generation, snapshot, evidence, skillEvidence, pluginEvidence, hookExecutions, instructionLoads, settingsGuard, configurationFailure, connected, read, pending, busy, command, hold, history, attempts, nativeStatus, sessionStatus, assets }: {
   sessionId: string; generation: number; snapshot?: ExecutionSnapshot; connected: boolean;
   evidence?: CapabilityEvidence[];
   skillEvidence?: SkillEvidence[];
   pluginEvidence?: PluginEvidence[];
   hookExecutions?: HookExecution[];
+  instructionLoads?: InstructionLoadHistory;
   settingsGuard?: SettingsGuard;
   configurationFailure?: ConfigurationFailure;
   read: <T>(path: string, body?: unknown) => Promise<T>;
@@ -166,6 +168,7 @@ export function ExecutionDetails({ sessionId, generation, snapshot, evidence, sk
       {snapshot.instance.kind === 'codex' ? <SkillContext key={`skill-context/${snapshot.id}/${connected}`} sessionId={sessionId} connected={connected} read={read} /> : null}
       {snapshot.instance.kind === 'codex' ? <SkillDiscovery key={`skill-discovery/${snapshot.id}/${connected}`} sessionId={sessionId} connected={connected} read={read} /> : null}
       {snapshot.instance.kind === 'claude' ? <ClaudeSkillCatalog key={`claude-skill-catalog/${snapshot.id}/${connected}`} sessionId={sessionId} connected={connected} read={read} /> : null}
+      {snapshot.instance.kind === 'claude' ? <InstructionLoads history={instructionLoads} live={connected && nativeStatus === 'sdk_live' && sessionStatus !== 'unknown'} /> : null}
       {snapshot.instance.kind === 'claude' ? <ClaudeInstalledPlugins key={`installed/${snapshot.id}/${generation}/${connected}`} sessionId={sessionId} baseSnapshotId={snapshot.id} hasPendingChange={Boolean(pending)} busy={busy} connected={connected} read={read} /> : null}
       {snapshot.instance.kind === 'claude' || snapshot.instance.kind === 'codex' ? <HookExecutions executions={hookExecutions} backend={snapshot.instance.kind} connected={connected && sessionStatus !== 'unknown'} /> : null}
       {snapshot.instance.kind === 'claude' || snapshot.instance.kind === 'codex' ? <HookCatalog key={`hooks/${snapshot.id}/${connected}`} sessionId={sessionId} backend={snapshot.instance.kind} connected={connected} read={read} /> : null}

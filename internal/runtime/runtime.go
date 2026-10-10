@@ -206,6 +206,7 @@ type View struct {
 	CapabilityEvidence   []CapabilityEvidence         `json:"capability_evidence,omitempty"`
 	HookExecutions       []HookExecution              `json:"hook_executions,omitempty"`
 	SettingsGuard        *ClaudeSettingsGuardEvidence `json:"settings_guard,omitempty"`
+	InstructionLoads     *InstructionLoadHistory      `json:"instruction_loads,omitempty"`
 	ConfigurationFailure *ConfigurationFailure        `json:"configuration_failure,omitempty"`
 	PluginEvidence       []PluginEvidence             `json:"plugin_evidence,omitempty"`
 	SkillEvidence        []SkillEvidence              `json:"skill_evidence,omitempty"`

@@ -111,7 +111,7 @@ def lifecycle_contracts(root, report):
     return checks
 
 
-def inside(root, mode):
+def inside(root, mode, prompt_correlation=False):
     verify_versions(root, ['claude'])
     env = environment(root / 'execution')
     parent = root / 'project'
@@ -148,6 +148,7 @@ def inside(root, mode):
         write(request, {'root': str(root), 'cwd': str(cwd), 'executable': CLAUDE,
                         'endpoint': provider.url, 'mode': mode, 'files': {k: str(v) for k, v in files.items()},
                         'read_file': str(read_file), 'changes': changes,
+                        'prompt_correlation': prompt_correlation,
                         'initial_disk': {name: hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else 'absent' for name, path in files.items()},
                         'settings': {'disableAllHooks': True} if mode == 'hooks-disabled' else {}})
         proc = subprocess.Popen(['node', str(Path(__file__).with_suffix('.mjs')), str(request)], cwd=REPO,
@@ -184,6 +185,7 @@ def main():
     parser.add_argument('--case', choices=MODES, default='rewrite-parent')
     parser.add_argument('--inside', type=Path)
     parser.add_argument('--audit', type=Path, help='Recheck saved native requests without starting a query')
+    parser.add_argument('--prompt-correlation', action='store_true', help='Observe native prompt IDs with explicitly identified SDK inputs')
     args = parser.parse_args()
     if args.audit:
         root = args.audit.resolve()
@@ -195,7 +197,7 @@ def main():
         print(json.dumps({'checks': len(checks), 'failed': [name for name, passed in checks.items() if not passed]}))
         raise SystemExit(0 if all(checks.values()) else 1)
     if args.inside:
-        return inside(args.inside, args.case)
+        return inside(args.inside, args.case, args.prompt_correlation)
     root = Path(tempfile.mkdtemp(prefix='netcap-instruction-lifecycle-', dir='/var/tmp'))
     (root / 'policy').mkdir()
     print('Evidence directory:', root, flush=True)
@@ -204,6 +206,8 @@ def main():
                '--bind', str(root), str(root), '--tmpfs', '/mnt', '--tmpfs', '/tmp', '--tmpfs', '/run',
                '--proc', '/proc', '--dev', '/dev', sys.executable, str(Path(__file__).resolve()),
                '--inside', str(root), '--case', args.case]
+    if args.prompt_correlation:
+        command.append('--prompt-correlation')
     proc = subprocess.Popen(command, cwd=REPO, env=environment(root / 'environment'), text=True,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
     try:

@@ -179,6 +179,7 @@ func (a *Application) commit(next State, kind, sessionID string) error {
 	for id, session := range next.Sessions {
 		retainCodexHookHistory(a.state.Sessions[id], &session.View)
 		bindCodexHookOperations(&session, next.Operations)
+		bindClaudeInstructionLoads(&session, next.Operations)
 		if session.Scope.Instance.Kind == "codex" && session.Connection != "ready" {
 			for n := range session.View.HookExecutions {
 				if session.View.HookExecutions[n].Status == "running" {

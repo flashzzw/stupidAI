@@ -1,6 +1,7 @@
 import { sanitizeHookEvent, unfinishedHooks } from './hook_execution.js';
 import { localSettingsHooks, settingsGuardEvidence, type SettingsChange } from './settings_guard.js';
 import { requiredToolApprovalHooks } from './tool_approvals.js';
+import { instructionLoadHooks, instructionPromptHooks, type InstructionLoad, type InstructionPromptLink } from './instruction_loads.js';
 import { spawnSettingsConsumer } from './settings_file_consumer.js';
 import { installedSettings, installedSettingsRecovery, verifyInstalledSettings, verifyInstalledSettingsAdoption } from './installed_settings.js';
 import { settingsSources, verifySettingsSources, adoptedSettingsHookSources } from './settings_sources.js';
@@ -20,8 +21,10 @@ import { MCPAuthenticationRequired, NotSent, type SessionConfig, record, text, u
 type Entry = ({ kind: 'input'; operation: string; text: string } |
   { kind: 'configuration_failure'; failure: ConfigurationFailure } |
   { kind: 'settings_change'; change: SettingsChange } |
+  { kind: 'instruction_load'; load: InstructionLoad } |
+  { kind: 'instruction_prompt'; link: InstructionPromptLink } |
   { kind: 'event'; operation: string; event: SDKMessage } |
-  { kind: 'initialized' | 'closed'; connection: string; pid?: number }) & { at?: string };
+  { kind: 'initialized' | 'closed'; connection: string; pid?: number }) & { at?: string; query_id?: string };
 type Request = { id: string; connection: string; operation: string; tool: string; input: Record<string, unknown>;
   title: string; status: 'pending' | 'submitted' | 'expired'; resolve: (value: PermissionResult) => void };
 
@@ -48,6 +51,8 @@ export class Session {
   private stream = '';
   private fault = '';
   private settingsRecordFailed = false;
+  private instructionRecordFailed = false;
+  private instructionQuery?: { id: string; configuration: string };
   private tasks = new Map<string, string>();
 
   constructor(private readonly root: string, config: SessionConfig, creating: boolean) {
@@ -120,6 +125,12 @@ export class Session {
     if (permissions.ask !== undefined && (!Array.isArray(permissions.ask) || permissions.ask.some(x => typeof x !== 'string'))) throw new NotSent('invalid settings permissions.ask');
     const readOnlySettings: Settings = { permissions: { ...permissions, ask: [...new Set([...(Array.isArray(permissions.ask) ? permissions.ask : []), 'Bash', 'Write', 'Edit', 'NotebookEdit'])] } };
     const approvalHooks = requiredToolApprovalHooks(config);
+    const instructionQuery = { id: randomUUID(), configuration: fingerprint(config) };
+    if (!config.probe) this.instructionQuery = instructionQuery;
+    const instructionContext = {native_id: config.id, cwd: config.cwd, query_id: instructionQuery.id, configuration_id: instructionQuery.configuration};
+    const instructionPrompts = config.probe ? {} : instructionPromptHooks(instructionContext,
+      link => this.append({kind:'instruction_prompt',link}), () => { this.instructionRecordFailed = true; });
+    const preToolHooks = [...approvalHooks.PreToolUse ?? [], ...instructionPrompts.PreToolUse ?? []];
     this.run = query({ prompt: input(), options: {
       cwd: config.cwd, pathToClaudeCodeExecutable: config.executable,
       systemPrompt: { type: 'preset', preset: 'claude_code' },
@@ -135,9 +146,12 @@ export class Session {
       ...(config.permission === 'read_only' && !settingsFile ? { settings: { ...(config.probe ? { disableAllHooks: true } : {}),
         permissions: { ask: ['Bash', 'Write', 'Edit', 'NotebookEdit'] } } } : {}),
       ...(settingsFile ? { settings: settingsFile } : {}),
-      ...(config.settings_guard_version || approvalHooks.PreToolUse ? { hooks: { ...(config.settings_guard_version ? localSettingsHooks(config.id,
+      ...(!config.probe || config.settings_guard_version || approvalHooks.PreToolUse ? { hooks: { ...(config.settings_guard_version ? localSettingsHooks(config.id,
         change => this.append({kind:'settings_change',change}),
-        () => { this.settingsRecordFailed = true; this.fault = '设置变化记录写入失败，不能接受输入'; }) : {}), ...approvalHooks } } : {}),
+        () => { this.settingsRecordFailed = true; this.fault = '设置变化记录写入失败，不能接受输入'; }) : {}), ...approvalHooks,
+        ...(!config.probe ? instructionLoadHooks(instructionContext,
+          load => this.append({kind:'instruction_load',load}), () => { this.instructionRecordFailed = true; }) : {}),
+        ...(preToolHooks.length ? {PreToolUse: preToolHooks} : {}) } } : {}),
       canUseTool: async (tool, args, options) => {
         const id = options.requestId;
         if (options.signal.aborted) return { behavior: 'deny', message: 'Request expired' };
@@ -163,7 +177,7 @@ export class Session {
         return this.hookChannel.process;
       },
     } });
-    this.reading = this.readEvents(this.run);
+    this.reading = this.readEvents(this.run, config.probe ? undefined : instructionQuery.id);
     try {
       const initialized = await this.run.initializationResult();
       if (approvalHooks.PreToolUse && initialized?.hooks_applied !== true) throw new NotSent('原生 CLI 未确认逐次工具审批约束');
@@ -208,7 +222,7 @@ export class Session {
     }
   }
 
-  private async readEvents(run: Query) {
+  private async readEvents(run: Query, queryID?: string) {
     try {
       for await (const event of run) {
         if (event.session_id && event.session_id !== this.config.id) throw new Error('SDK session identity changed');
@@ -221,7 +235,7 @@ export class Session {
           : undefined;
         const operation = hookOwner && 'operation' in hookOwner ? hookOwner.operation
           : 'user_message_uuid' in event && typeof event.user_message_uuid === 'string' ? event.user_message_uuid : this.active;
-        this.append({ kind: 'event', operation, event: sanitizeHookEvent(event) });
+        this.append({ kind: 'event', operation, event: sanitizeHookEvent(event), ...(queryID ? {query_id:queryID} : {}) });
         if (event.type === 'system' && event.subtype === 'init' && this.pluginPackages) {
           // init reports the current package paths/versions but no source keys.
           // Retain the startup source proof only while the full list agrees.
@@ -260,7 +274,7 @@ export class Session {
     if (this.run) await verifySkills(this.run, this.config, (this.configuration?.status==='recovered'?this.configuration.skill_target:this.configuration?.skill_previous) ?? []);
     await this.verifyPluginBinding();
     if (unfinishedHooks(this.entries).length) throw new NotSent('原生 hook 尚未报告终态，不能接受新输入');
-    this.append({ kind: 'input', operation, text: body });
+    this.append({ kind: 'input', operation, text: body, ...(!this.config.probe && this.instructionQuery ? {query_id:this.instructionQuery.id} : {}) });
     this.active = operation;
     this.queue.push({ type: 'user', uuid: operation as `${string}-${string}-${string}-${string}-${string}`, session_id: this.config.id,
       message: { role: 'user', content: body }, parent_tool_use_id: null });
@@ -309,8 +323,11 @@ export class Session {
       this.entries.flatMap(e => e.kind === 'settings_change' ? [e.change] : []), this.settingsRecordFailed);
     const failure=this.entries.flatMap(e=>e.kind==='configuration_failure'?[configurationFailure(e.failure)]:[]).filter(f=>f&&f.operation===this.configuration?.operation&&f.baseline===this.configuration?.baseline).at(-1);
     const recoveryFailure=this.entries.flatMap(e=>e.kind==='configuration_failure'?[configurationFailure(e.failure)]:[]).filter(f=>f&&f.operation===this.configuration?.recovery?.operation&&f.baseline===this.configuration?.baseline).at(-1);
+    const instructionCurrent = !!this.run && !this.stopping && !this.changing && this.instructionQuery?.configuration === fingerprint(this.config);
     return { config: this.config, connection: this.connection, live: !!this.run, active: this.active, fault: this.fault,
       entries: this.entries, stream: this.stream,
+      ...(!this.config.probe ? {instruction_observer:{version:1, recording_failed:this.instructionRecordFailed,
+        current_query_id:instructionCurrent ? this.instructionQuery!.id : '', current_configuration_id:instructionCurrent ? this.instructionQuery!.configuration : ''}} : {}),
       ...(settingsGuard ? {settings_guard:settingsGuard} : {}),
       ...(recoveryFailure && this.configuration?.status!=='recovered' ? {configuration_recovery_failure:recoveryFailure} : {}),
       ...(failure && this.configuration?.status!=='verified' && this.configuration?.status!=='recovered' ? {configuration_failure:failure} : {}),

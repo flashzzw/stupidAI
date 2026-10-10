@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect owned native instruction sources without model input or user state."""
+"""Inspect owned instruction sources; --loads also uses a local scripted Read."""
 import argparse
 import json
 import os
@@ -16,7 +16,7 @@ from runtime.common import Provider, stop
 REPO = Path(__file__).resolve().parents[1]
 
 
-def inside(root, direct, binary):
+def inside(root, direct, binary, loads=False):
     verify_versions(root, ['claude'])
     env = environment(root / 'execution')
     profile = Path(env['CLAUDE_CONFIG_DIR'])
@@ -26,6 +26,8 @@ def inside(root, direct, binary):
     subprocess.run(['git', 'init', '--quiet', str(cwd)], check=True, env=env)
     files = [profile / 'CLAUDE.md', parent / 'CLAUDE.md', cwd / 'CLAUDE.md',
              cwd / 'reference.md', parent / '.claude/rules/owned.md']
+    if loads:
+        files += [cwd / 'CLAUDE.local.md', root / 'policy/CLAUDE.md']
     for i, path in enumerate(files):
         write(path, f'PRIVATE_INSTRUCTION_BODY_{i}\nUse only the owned fixture.\n')
     write(cwd / 'CLAUDE.md', 'PRIVATE_INSTRUCTION_BODY_2\n@./reference.md\n')
@@ -42,21 +44,31 @@ def inside(root, direct, binary):
         return
     checks, reports = {}, {}
     client = None
-    provider = Provider(root, 'A')
+    if loads:
+        from claude_instruction_lifecycle_probe import InstructionProvider
+        provider = InstructionProvider(root, 'A')
+        provider.mode, provider.read_file = 'nested-read', cwd / 'feature/data.txt'
+        write(cwd / 'feature/CLAUDE.md', 'PRIVATE_INSTRUCTION_NESTED\nUse only the owned fixture.\n')
+        write(provider.read_file, 'OWNED_NESTED_READ_RESULT\n')
+    else:
+        provider = Provider(root, 'A')
     if binary:
         try:
             request = root / 'application-request.json'
             write(request, {'Root': str(root), 'Cwd': str(cwd), 'Profile': str(profile), 'Executable': CLAUDE,
-                            'Endpoint': provider.url, 'Files': [str(p) for p in files]})
-            result = subprocess.run([str(binary), '-test.run=^TestClaudeNativeInstructionSources$', '-test.v'],
+                            'Endpoint': provider.url, 'Files': [str(p) if p != root / 'policy/CLAUDE.md' else '/etc/claude-code/CLAUDE.md' for p in files],
+                            'ReadFile': str(provider.read_file) if loads else ''})
+            name = 'TestClaudeNativeInstructionLoads' if loads else 'TestClaudeNativeInstructionSources'
+            result = subprocess.run([str(binary), '-test.run=^' + name + '$', '-test.v'],
                 cwd=REPO / 'internal/runtime', env={**env, 'NETCAP_INSTRUCTION_REQUEST': str(request), 'NETCAP_INSTRUCTION_KEY': 'fixture-A'},
-                text=True, capture_output=True, timeout=60)
+                text=True, capture_output=True, timeout=90 if loads else 60)
             write(root / 'application.stdout', result.stdout)
             write(root / 'application.stderr', result.stderr)
             write(root / 'provider-result.json', {'requests': len(provider.requests), 'errors': provider.errors})
             print(result.stdout, end='')
             print(result.stderr, end='', file=sys.stderr)
-            assert result.returncode == 0 and not provider.requests, 'native Application catalog validation failed'
+            assert result.returncode == 0 and len(provider.requests) == (4 if loads else 0) and not provider.errors, 'native Application instruction validation failed'
+            assert all(r['auth_matches'] and 'count_tokens' not in r['path'] for r in provider.requests), 'unexpected local provider request'
             return
         finally:
             provider.close()
@@ -111,9 +123,12 @@ def main():
     parser.add_argument('--inside', type=Path)
     parser.add_argument('--direct', action='store_true')
     parser.add_argument('--binary', type=Path)
+    parser.add_argument('--loads', action='store_true', help='Validate persistent load notifications with the native Application fixture')
     args = parser.parse_args()
+    if args.loads and (args.direct or not args.binary):
+        parser.error('--loads requires --binary and cannot be combined with --direct')
     if args.inside:
-        return inside(args.inside, args.direct, args.binary)
+        return inside(args.inside, args.direct, args.binary, args.loads)
     root = Path(tempfile.mkdtemp(prefix='netcap-instruction-sources-', dir='/var/tmp'))
     (root / 'policy').mkdir()
     registry = root / 'windows/Windows/System32/reg.exe'
@@ -128,10 +143,12 @@ def main():
         command.append('--direct')
     if args.binary:
         command += ['--binary', str(args.binary.resolve())]
+    if args.loads:
+        command.append('--loads')
     proc = subprocess.Popen(command, cwd=REPO, env=environment(root / 'environment'), text=True,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
     try:
-        out, err = proc.communicate(timeout=75)
+        out, err = proc.communicate(timeout=105 if args.loads else 75)
         write(root / 'runner.stdout', out)
         write(root / 'runner.stderr', err)
         print(out, end='')

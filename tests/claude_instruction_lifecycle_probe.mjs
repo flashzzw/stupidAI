@@ -7,10 +7,10 @@ import { spawn } from 'node:child_process';
 import { NativeHookChannel } from '../bridges/claude/dist/hook_catalog.js';
 
 const request = JSON.parse(readFileSync(process.argv[2], 'utf8'));
-const native = randomUUID(), samples = {}, events = [], loads = [], permissions = [], checks = {};
+const native = randomUUID(), samples = {}, events = [], loads = [], permissions = [], checks = {}, submissions = [], sent = [], toolLinks = [];
 const check = (name, value) => { checks[name] = Boolean(value); if (!value) throw Error(name); };
 let stage = 'initializing', hookMutation = false, current;
-const writeResult = () => writeFileSync(join(request.root, 'sdk-result.json'), JSON.stringify({native, checks, samples, loads, permissions, events}, null, 2));
+const writeResult = () => writeFileSync(join(request.root, 'sdk-result.json'), JSON.stringify({native, checks, samples, loads, permissions, events, submissions, sent, tool_links: toolLinks}, null, 2));
 const owned = path => resolve(path).startsWith(resolve(request.root) + sep);
 const disk = () => Object.fromEntries(Object.entries(request.files).map(([name, path]) => {
   try { return [name, createHash('sha256').update(readFileSync(path)).digest('hex')]; }
@@ -45,8 +45,8 @@ async function open(resume) {
       channel = new NativeHookChannel(child);
       return channel.process;
     },
-    hooks: {InstructionsLoaded: [{hooks: [async input => {
-      loads.push({stage, ...input});
+    hooks: {InstructionsLoaded: [{hooks: [async (input, toolUseID) => {
+      loads.push({stage, ...input, ...(toolUseID ? {callback_tool_use_id: toolUseID} : {})});
       check('loaded_path_is_owned_' + loads.length, owned(input.file_path) || input.file_path.startsWith('/etc/claude-code/'));
       if (request.mode === 'hook-race' && !hookMutation && input.file_path === request.files.parent) {
         hookMutation = true;
@@ -54,7 +54,16 @@ async function open(resume) {
       }
       if (request.mode === 'hook-block' && input.file_path === request.files.parent) return {decision: 'block', reason: 'Owned instruction exclusion probe'};
       return {};
-    }]}]},
+    }]}], ...(request.prompt_correlation ? {UserPromptSubmit: [{hooks: [async (input, toolUseID) => {
+      submissions.push({stage, keys: Object.keys(input), session_id: input.session_id, prompt_id: input.prompt_id,
+        tool_use_id: toolUseID, prompt_hash: createHash('sha256').update(input.prompt).digest('hex'),
+        native_identifiers: Object.fromEntries(Object.entries(input).filter(([key, value]) => (key.endsWith('_id') || key.includes('uuid')) && typeof value === 'string'))});
+      return {};
+    }]}], PreToolUse: [{hooks: [async (input, toolUseID) => {
+      toolLinks.push({stage, keys: Object.keys(input), session_id: input.session_id, prompt_id: input.prompt_id,
+        tool_use_id: input.tool_use_id, callback_tool_use_id: toolUseID, tool: input.tool_name, agent_id: input.agent_id});
+      return {};
+    }]}]} : {})},
     canUseTool: async (tool, input) => {
       const allow = tool === 'Read' && input.file_path === request.read_file && owned(realpathSync(input.file_path));
       permissions.push({stage, tool, input, allow});
@@ -72,8 +81,11 @@ async function open(resume) {
   return {run, close, async turn(label) {
     stage = label;
     const count = results.length;
-    queue.push({type: 'user', session_id: native, parent_tool_use_id: null,
-      message: {role: 'user', content: 'W0209_INSTRUCTION_CASE=' + label}});
+    const text = 'W0209_INSTRUCTION_CASE=' + label;
+    const id = randomUUID();
+    if (request.prompt_correlation) sent.push({stage: label, input_uuid: id, text_hash: createHash('sha256').update(text).digest('hex')});
+    queue.push({type: 'user', session_id: native, parent_tool_use_id: null, ...(request.prompt_correlation ? {uuid: id} : {}),
+      message: {role: 'user', content: text}});
     wake?.();
     for (const deadline = Date.now() + 25000; results.length === count;) {
       if (failure) throw failure;
