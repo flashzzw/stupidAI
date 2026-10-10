@@ -1,0 +1,47 @@
+{
+  "thread": {
+    "id": "01a0ec4a-b6a7-7451-8368-72811becd186",
+    "status": {
+      "type": "idle"
+    },
+    "path": "@PROFILE@/rollout.jsonl",
+    "cwd": "@PROFILE@",
+    "model": "gpt-6-astra",
+    "modelProvider": "fixture",
+    "cliVersion": "0.158.0",
+    "turns": [
+      {
+        "id": "01a0ec4a-b704-7450-9838-05651a97bbbe",
+        "items": [
+          {
+            "type": "userMessage",
+            "id": "item-1",
+            "clientId": "3d374a13-f9f2-419c-b68d-ab105fe13345",
+            "content": [
+              {
+                "type": "text",
+                "text": "Execute this exact command, then return only the UTC value after the exit code: netcap_probe_utc=$(/usr/bin/date -u +%FT%TZ); netcap_probe_exit=$?; printf '__NETCAP_UTC__%s %s\\n' \"$netcap_probe_exit\" \"$netcap_probe_utc\"; exit \"$netcap_probe_exit\"",
+                "text_elements": []
+              }
+            ]
+          },
+          {
+            "type": "agentMessage",
+            "id": "item-2",
+            "text": "2026-09-29T08:31:54Z",
+            "phase": "final_answer",
+            "memoryCitation": null,
+            "delivery": null,
+            "questions": null
+          }
+        ],
+        "itemsView": "full",
+        "status": "completed",
+        "error": null,
+        "startedAt": 1790670714,
+        "completedAt": 1790670714,
+        "durationMs": 132
+      }
+    ]
+  }
+}

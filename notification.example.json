@@ -1,0 +1,81 @@
+{
+  "version": 2,
+  "agents": {
+    "codex": {
+      "enabled": true,
+      "events": [
+        "permission_required",
+        "input_required",
+        "run_completed",
+        "run_failed",
+        "started",
+        "stopped"
+      ],
+      "channels": {
+        "system": true,
+        "wecom": true
+      }
+    },
+    "claude": {
+      "enabled": true,
+      "events": [
+        "permission_required",
+        "input_required",
+        "run_completed",
+        "run_failed",
+        "started",
+        "stopped"
+      ],
+      "channels": {
+        "system": true,
+        "wecom": true
+      }
+    },
+    "opencode": {
+      "enabled": true,
+      "events": [
+        "permission_required",
+        "input_required",
+        "run_completed",
+        "run_failed",
+        "started",
+        "stopped"
+      ],
+      "channels": {
+        "system": true,
+        "wecom": true
+      }
+    }
+  },
+  "behavior": {},
+  "subscriptions": {
+    "task.succeeded": {
+      "enabled": false,
+      "channels": {
+        "system": true,
+        "wecom": true
+      }
+    },
+    "goal.completed": {
+      "enabled": false,
+      "channels": {
+        "system": true,
+        "wecom": true
+      }
+    },
+    "route.unavailable": {
+      "enabled": false,
+      "channels": {
+        "system": true,
+        "wecom": true
+      }
+    },
+    "route.recovered": {
+      "enabled": false,
+      "channels": {
+        "system": true,
+        "wecom": true
+      }
+    }
+  }
+}

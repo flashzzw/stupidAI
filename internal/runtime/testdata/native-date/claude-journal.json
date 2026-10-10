@@ -1,0 +1,109 @@
+[
+  {
+    "kind": "initialized"
+  },
+  {
+    "kind": "input",
+    "operation": "adbd1e65-9c43-4e31-b010-0a3be1aa0897",
+    "text": "Execute this exact command, then return only the UTC value after the exit code: netcap_probe_utc=$(/usr/bin/date -u +%FT%TZ); netcap_probe_exit=$?; printf '__NETCAP_UTC__%s %s\\n' \"$netcap_probe_exit\" \"$netcap_probe_utc\"; exit \"$netcap_probe_exit\""
+  },
+  {
+    "kind": "event",
+    "operation": "adbd1e65-9c43-4e31-b010-0a3be1aa0897",
+    "event": {
+      "type": "user",
+      "uuid": "adbd1e65-9c43-4e31-b010-0a3be1aa0897",
+      "session_id": "8d99d655-07cf-4f72-80ff-5a92a5960b2a",
+      "message": {
+        "role": "user",
+        "content": "Execute this exact command, then return only the UTC value after the exit code: netcap_probe_utc=$(/usr/bin/date -u +%FT%TZ); netcap_probe_exit=$?; printf '__NETCAP_UTC__%s %s\\n' \"$netcap_probe_exit\" \"$netcap_probe_utc\"; exit \"$netcap_probe_exit\""
+      },
+      "isReplay": true,
+      "parent_tool_use_id": null
+    }
+  },
+  {
+    "kind": "event",
+    "operation": "adbd1e65-9c43-4e31-b010-0a3be1aa0897",
+    "event": {
+      "type": "assistant",
+      "uuid": "e67a2362-70b8-4967-8786-3858e722587c",
+      "session_id": "8d99d655-07cf-4f72-80ff-5a92a5960b2a",
+      "message": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "tool_1",
+            "name": "Bash",
+            "input": {
+              "command": "netcap_probe_utc=$(/usr/bin/date -u +%FT%TZ); netcap_probe_exit=$?; printf '__NETCAP_UTC__%s %s\\n' \"$netcap_probe_exit\" \"$netcap_probe_utc\"; exit \"$netcap_probe_exit\"",
+              "description": "Read UTC time"
+            }
+          }
+        ]
+      },
+      "parent_tool_use_id": null
+    }
+  },
+  {
+    "kind": "event",
+    "operation": "adbd1e65-9c43-4e31-b010-0a3be1aa0897",
+    "event": {
+      "type": "user",
+      "uuid": "bf8b60b0-66d6-4601-a425-1102aad91f6b",
+      "session_id": "8d99d655-07cf-4f72-80ff-5a92a5960b2a",
+      "message": {
+        "role": "user",
+        "content": [
+          {
+            "tool_use_id": "tool_1",
+            "type": "tool_result",
+            "content": "__NETCAP_UTC__0 2026-09-29T08:31:56Z",
+            "is_error": false
+          }
+        ]
+      },
+      "parent_tool_use_id": null,
+      "tool_use_result": {
+        "stdout": "__NETCAP_UTC__0 2026-09-29T08:31:56Z",
+        "stderr": "",
+        "interrupted": false,
+        "isImage": false,
+        "noOutputExpected": false
+      }
+    }
+  },
+  {
+    "kind": "event",
+    "operation": "adbd1e65-9c43-4e31-b010-0a3be1aa0897",
+    "event": {
+      "type": "assistant",
+      "uuid": "d9a0595b-d457-40c4-b6cd-8631966420f6",
+      "session_id": "8d99d655-07cf-4f72-80ff-5a92a5960b2a",
+      "message": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "2026-09-29T08:31:56Z"
+          }
+        ]
+      },
+      "parent_tool_use_id": null
+    }
+  },
+  {
+    "kind": "event",
+    "operation": "adbd1e65-9c43-4e31-b010-0a3be1aa0897",
+    "event": {
+      "type": "result",
+      "subtype": "success",
+      "uuid": "147f1380-21ac-4b29-a037-4494d9f2fd41",
+      "session_id": "8d99d655-07cf-4f72-80ff-5a92a5960b2a",
+      "is_error": false,
+      "terminal_reason": "completed",
+      "queued_turn_count": 0
+    }
+  }
+]

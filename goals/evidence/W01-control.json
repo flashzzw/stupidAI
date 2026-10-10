@@ -1,0 +1,167 @@
+{
+  "date": "2026-09-30",
+  "scope": "W01 control implementation, W02 native state namespace and Claude MCP invocation; no real providers or user sessions",
+  "entries": {
+    "claude-stopped-resume": {
+      "raw_root": "/tmp/netcap-handoff-ryughfem",
+      "result": {
+        "execution": "completed",
+        "expectations_met": true,
+        "observations": {
+          "checks": {
+            "old_foreground_exited": true,
+            "same_native_id": true,
+            "original_history_preserved": true,
+            "bound_credentials": true,
+            "owned_supervisor_stopped": true
+          },
+          "scope": "completed independent foreground exits, then full-ID --resume --bg; not live adoption",
+          "native_id": "e17f3e8f-be2e-46a3-a2c0-47c401db5b3f",
+          "resumed_native_id": "e17f3e8f-be2e-46a3-a2c0-47c401db5b3f",
+          "launch_output": "backgrounded · e17f3e8f\n  claude agents             list sessions\n  claude attach e17f3e8f    open in this terminal\n  claude logs e17f3e8f      show recent output\n  claude stop e17f3e8f      stop this session\n"
+        }
+      },
+      "versions": {
+        "claude": {
+          "version": "2.1.280 (Claude Code)",
+          "path": "/home/zzw/.local/share/claude/versions/2.1.280"
+        }
+      },
+      "result_sha256": "a4faf1db6c63de6e015e48c8a559149f2f67c8160cca6924bce51a4d59713baf"
+    },
+    "codex-control": {
+      "raw_root": "/tmp/netcap-handoff-crfducxa",
+      "result": {
+        "execution": "completed",
+        "expectations_met": true,
+        "observations": {
+          "checks": {
+            "historical_terminal_input_acknowledged": true,
+            "duplicate_handoff_idempotent": true,
+            "in_flight_resume_refused": true,
+            "tool_survives_controller_crash": true,
+            "same_native_identity_after_crash": true,
+            "tool_executed_once": true,
+            "control_restored_after_tool": true,
+            "all_requests_authenticated": true
+          },
+          "fixture": "/tmp/netcap-console-xs63yqjr",
+          "scope": "production Application, real shared-backend TUI, owned tool and Go crash; no independent foreground adoption",
+          "native_id": "01a0f14a-4c13-72e2-8d80-d08ba43825d5",
+          "tool_pid": 1032109,
+          "approval_id": "codex-local/4abdae0c-fa20-48b7-97ff-3e1f1536fe12/0"
+        }
+      },
+      "versions": {
+        "codex": {
+          "version": "codex-cli 0.157.1",
+          "path": "/home/zzw/.codex/packages/standalone/releases/0.157.1-x86_64-unknown-linux-musl/bin/codex"
+        },
+        "server": {
+          "version": "codex-cli 0.158.0",
+          "path": "/home/zzw/.codex/packages/app-server-daemon/releases/0.158.0-x86_64-unknown-linux-musl/bin/codex"
+        }
+      },
+      "result_sha256": "f73c97c6e3b18ea1604c7d460dd78a73b0145084dfe4cd199c10d7a982a8f153"
+    },
+    "claude-mcp-bindings": {
+      "raw_root": "/tmp/netcap-mcp-binding-se_etwey",
+      "result": {
+        "scope": "shared stdio MCP definition; separate native Claude profiles/cwd/model and MCP credentials; selected invocation then excluded same-ID resume",
+        "results": {
+          "A": {
+            "execution": "completed",
+            "expectations_met": true,
+            "checks": {
+              "tool_called_once": true,
+              "bound_identity_and_credential": true,
+              "bound_working_directory": true,
+              "tool_result_returned_to_model": true,
+              "same_native_id": true,
+              "excluded_from_native_inventory": true,
+              "excluded_from_model_tools": true,
+              "exclusion_did_not_invoke_tool": true,
+              "model_credentials_bound": true
+            },
+            "native_id": "092e7748-fb5f-479a-94ec-3c3906e50968",
+            "actual_calls": [
+              {
+                "profile": "A",
+                "cwd": "/tmp/netcap-mcp-binding-se_etwey/A/work",
+                "credential_matches": true
+              }
+            ]
+          },
+          "B": {
+            "execution": "completed",
+            "expectations_met": true,
+            "checks": {
+              "tool_called_once": true,
+              "bound_identity_and_credential": true,
+              "bound_working_directory": true,
+              "tool_result_returned_to_model": true,
+              "same_native_id": true,
+              "excluded_from_native_inventory": true,
+              "excluded_from_model_tools": true,
+              "exclusion_did_not_invoke_tool": true,
+              "model_credentials_bound": true
+            },
+            "native_id": "b6117b69-dcde-4eda-b18d-8e558a1a4fd5",
+            "actual_calls": [
+              {
+                "profile": "B",
+                "cwd": "/tmp/netcap-mcp-binding-se_etwey/B/work",
+                "credential_matches": true
+              }
+            ]
+          }
+        }
+      },
+      "versions": {
+        "claude": {
+          "version": "2.1.280 (Claude Code)",
+          "path": "/home/zzw/.local/share/claude/versions/2.1.280"
+        }
+      },
+      "result_sha256": "91111a77b7eefb5ba23f069de089ada9b83e96ee6474f978d80e5a3f0b2d3d2b"
+    }
+  },
+  "browser": "W01-control-browser.json",
+  "verification": {
+    "go_test_race_all": "passed",
+    "go_vet_all": "passed",
+    "new_regression_checks": "passed",
+    "web_typecheck_build": "passed",
+    "isolated_go_build": "passed",
+    "python_syntax": "passed"
+  },
+  "reproduced_before_fix": [
+    "resume could grant control before checking running tools",
+    "old external input revoked an acknowledged handoff",
+    "observation could replace an existing native ID",
+    "identical config content allowed a retargeted state directory"
+  ],
+  "source_sha256_at_archive": {
+    "internal/app/application.go": "96b0ffe879ce13a8de5bfcfd04a3b2e2a4ecac0e11c0b8f4e5d0ad42abdeda2f",
+    "internal/app/model.go": "0681efa947112ac759c09a4ba80e2b6e4c91d625f46ffe64b0eadca39065819b",
+    "internal/app/control_handoff.go": "b3b2f5b68f17a7266146789f0750b8dfa0401d99b9e06a5ec12d9b2d2210f43d",
+    "internal/app/control_handoff_test.go": "36f46bd2c7f27736a529989f3184ec8fd0bcd540af27f8dc30b84500877572d7",
+    "internal/app/routes.go": "df3bf9f25f644079eec92279b3652a5b2b90c14b2c644b693b0bb4f0636e74fc",
+    "internal/app/instances.go": "895aa2ad266b34f674dc7c9f3697bca5bd8516fe4946d43b14995971fda960a5",
+    "internal/runtime/runtime.go": "0d5396f70efcf91622068e71d53e5bcd688e826a4cd7baee0dbd70d689320f97",
+    "internal/runtime/identity.go": "4b5272b858aa56aca294725d0254a557a75ff80140b119c8c34c0cfb8dddbb4f",
+    "internal/runtime/adapters.go": "ce8f45eaea372b7593fbaab1575dc481f38d2b27baffb834ebd7262635fa05a2",
+    "web/src/main.tsx": "65055976bea96a551b3c1117a04081d25265458610b3559f0a636708170c6201",
+    "web/src/InstanceDetails.tsx": "2e2e8a2a913a5c138a35e55c639a44dc8fe7796875f9c82f3020851af8a8f03d",
+    "tests/native_handoff_probe.py": "a1685ed013dabcb7192e4e9a418062368313cf8cc6bf3132641bfa13115fcec3",
+    "tests/mcp_binding_probe.py": "bbddf7193f62f1ffb086b6a7101982daadfb4c002197f5544859cc281a714791"
+  },
+  "limits": [
+    "Strict arbitrary foreground live adoption still not verified",
+    "Claude /background still changes native identity in B03/B04",
+    "Claude in-flight tools/approvals not covered by the new stopped-resume case",
+    "W02 full capability library and immutable configuration snapshots not implemented",
+    "Legacy records without namespace field retain compatibility without fabricated historical proof",
+    "Codex TUI cosmetic config updates still trigger conservative file fingerprint checks"
+  ]
+}

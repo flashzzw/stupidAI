@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "state_dir": ".dev/console-state",
+  "listen": "127.0.0.1:0",
+  "automation": {
+    "global_limit": 1,
+    "route_limit": 1,
+    "probe_ttl_seconds": 120,
+    "probe_timeout_seconds": 120
+  },
+  "instances": [
+    {
+      "id": "codex-local",
+      "kind": "codex",
+      "executable": "/path/to/codex-0.157.1",
+      "server_executable": "/path/to/codex-0.158.0",
+      "profile": ".dev/profiles/codex",
+      "socket": ".dev/codex.sock",
+      "version": "0.157.1/0.158.0",
+      "policy_revision": "m0-1",
+      "env_allow": [
+        "NETCAP_FIXTURE_KEY"
+      ],
+      "notification_sender": "legacy"
+    },
+    {
+      "id": "claude-local",
+      "kind": "claude",
+      "executable": "/path/to/claude-2.1.280",
+      "profile": ".dev/profiles/claude",
+      "bridge": "bridges/claude/dist/main.js",
+      "node_executable": "/path/to/node-24",
+      "version": "2.1.280/0.3.280",
+      "policy_revision": "m0-1",
+      "env_allow": [],
+      "notification_sender": "legacy"
+    },
+    {
+      "id": "opencode-local",
+      "kind": "opencode",
+      "executable": "/path/to/opencode-1.18.32",
+      "profile": ".dev/profiles/opencode",
+      "version": "1.18.32",
+      "policy_revision": "m0-1",
+      "env_allow": [],
+      "notification_sender": "legacy"
+    }
+  ],
+  "routes": [
+    {
+      "id": "route-a",
+      "instance_id": "codex-local",
+      "provider": "fixture",
+      "endpoint": "http://127.0.0.1:9001/v1",
+      "model": "gpt-6-astra",
+      "credential_ref": "env:NETCAP_FIXTURE_KEY",
+      "credential_revision": "1",
+      "config_revision": "1"
+    },
+    {
+      "id": "claude-a",
+      "instance_id": "claude-local",
+      "provider": "anthropic",
+      "endpoint": "http://127.0.0.1:9002",
+      "model": "claude-sonnet-4-6",
+      "credential_ref": "env:NETCAP_CLAUDE_KEY",
+      "credential_revision": "1",
+      "config_revision": "1"
+    },
+    {
+      "id": "opencode-a",
+      "instance_id": "opencode-local",
+      "provider": "fixture",
+      "endpoint": "http://127.0.0.1:9003/v1",
+      "model": "fixture-model",
+      "credential_ref": "env:NETCAP_OPENCODE_KEY",
+      "credential_revision": "1",
+      "config_revision": "1"
+    }
+  ],
+  "projects": [
+    {
+      "id": "example",
+      "name": "隔离测试项目",
+      "cwd": ".dev/workspace"
+    }
+  ],
+  "observers": [
+    {
+      "id": "codex-hooks",
+      "instance_id": "codex-local",
+      "project_id": "example",
+      "format": "hook",
+      "token_ref": "env:NETCAP_CODEX_OBSERVER_TOKEN",
+      "notification_sender": "legacy"
+    },
+    {
+      "id": "claude-hooks",
+      "instance_id": "claude-local",
+      "project_id": "example",
+      "format": "hook",
+      "token_ref": "env:NETCAP_CLAUDE_OBSERVER_TOKEN",
+      "notification_sender": "legacy"
+    },
+    {
+      "id": "opencode-plugin",
+      "instance_id": "opencode-local",
+      "project_id": "example",
+      "format": "opencode",
+      "token_ref": "env:NETCAP_OPENCODE_OBSERVER_TOKEN",
+      "notification_sender": "legacy"
+    },
+    {
+      "id": "codex-otel",
+      "instance_id": "codex-local",
+      "project_id": "example",
+      "format": "otel",
+      "token_ref": "env:NETCAP_OTEL_OBSERVER_TOKEN",
+      "notification_sender": "legacy"
+    }
+  ],
+  "capability_assets": []
+}

@@ -1,0 +1,19 @@
+{
+  "agents": [
+    "codex",
+    "claude",
+    "opencode"
+  ],
+  "simultaneous_streams": 3,
+  "simultaneous_approvals": 3,
+  "foreign_request": "rejected",
+  "permissions": {
+    "codex": "accept",
+    "claude": "deny",
+    "opencode": "once"
+  },
+  "operation_event_identity": "isolated",
+  "credentials": "three local endpoints",
+  "restart": "original identities, no replay",
+  "takeover": "all three"
+}

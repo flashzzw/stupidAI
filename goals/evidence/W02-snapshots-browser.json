@@ -1,0 +1,34 @@
+{
+  "date": "2026-09-30",
+  "scope": "Production Go/Web and real Codex, owned fixture and synthetic provider",
+  "checks": {
+    "reference_recorded": true,
+    "reference_not_loading_disclaimer": true,
+    "snapshot_shown": true,
+    "on_demand_source_check": true,
+    "send_and_reload_keep_snapshot": true,
+    "source_drift_visible": true,
+    "drift_send_refused": true,
+    "viewport_1440": true,
+    "viewport_768_no_overflow": true,
+    "narrow_reference_form_fits": true,
+    "javascript_errors": []
+  },
+  "native_id": "01a0f175-b4c3-7113-bc5f-28d3f4965166",
+  "snapshot_id": "011a7e13-c158-431c-9d68-306baaa2e079",
+  "screenshots": [
+    {
+      "path": "/tmp/netcap-w02-snapshot-o_mejdzz/W02-snapshot-desktop.png",
+      "sha256": "882110c970615f406f96e275b91d1e699c2fc3a1757dd3e98651dd7ea86b76ff"
+    },
+    {
+      "path": "/tmp/netcap-w02-snapshot-o_mejdzz/W02-snapshot-narrow.png",
+      "sha256": "0a6f0e7f17bd506c1f732e65169b6468998652a759966b74bb4a25c3b9454f86"
+    }
+  ],
+  "expected_http_errors": [
+    "401 before login",
+    "409 when sending after source drift"
+  ],
+  "fixture": "/tmp/netcap-console-7rqb3t5t"
+}

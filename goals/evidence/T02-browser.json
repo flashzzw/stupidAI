@@ -1,0 +1,10 @@
+{
+  "native_id": "01a0e8b6-06db-71d0-b420-9db36fc71769",
+  "streamed_turns": 2,
+  "messages_after_reload": 4,
+  "pause": "persisted",
+  "offline": "writes disabled",
+  "reconnect": "snapshot restored",
+  "desktop_overflow": false,
+  "tablet_overflow": false
+}

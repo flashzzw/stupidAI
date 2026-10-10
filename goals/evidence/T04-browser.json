@@ -1,0 +1,36 @@
+{
+  "date": "2026-09-29",
+  "baseline_fixture": "/tmp/netcap-console-m7qrkqvz",
+  "baseline": {
+    "streamed_turns": 2,
+    "messages_after_reload": 4,
+    "pause": "persisted",
+    "offline": "writes disabled",
+    "reconnect": "snapshot restored",
+    "viewport_widths": [
+      1440,
+      768
+    ],
+    "overflow": false
+  },
+  "interaction_fixture": "/tmp/netcap-console-nnt6z36r",
+  "approvals": [
+    "allow",
+    "deny"
+  ],
+  "question": "AskUserQuestion answer retained after reload",
+  "interrupt": "native terminal result and persisted pause",
+  "unknown": [
+    "old callback disabled",
+    "takeover preserves occupancy",
+    "resume rejected",
+    "retained after reload"
+  ],
+  "review_fixture": "/tmp/netcap-console-aphe6kbp",
+  "approval_details": [
+    "actual command visible",
+    "tool arguments expandable",
+    "approved native execution completed"
+  ],
+  "all_owned_processes_stopped": true
+}

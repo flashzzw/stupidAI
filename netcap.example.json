@@ -1,0 +1,14 @@
+{
+  "codex_home": "/home/zzw/.codex",
+  "codex_bin": "codex",
+  "state_dir": "./.netcap-go-v2",
+  "weather_script": "./weather.py",
+  "python_bin": "python3",
+  "weather_interval_seconds": 10,
+  "probe_timeout_seconds": 120,
+  "weather_timeout_seconds": 120,
+  "poll_seconds": 2,
+  "rpc_timeout_seconds": 10,
+  "auto_start_daemon": true,
+  "goals": []
+}

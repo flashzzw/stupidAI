@@ -1,0 +1,43 @@
+# Only project sources and explicit examples belong in this repository.
+/*
+!/.gitignore
+!/*.md
+!/*.py
+!/*.html
+!/Makefile
+!/go.mod
+!/go.sum
+!/guard.example.toml
+!/netcap.example.json
+!/console.example.json
+!/notification.example.json
+!/cmd/
+!/internal/
+!/netcap/
+!/tests/
+!/goals/
+!/goals_W/
+!/bridges/
+!/web/
+!/docs/
+!/scripts/
+!/.github/
+
+**/__pycache__/
+**/node_modules/
+**/dist/
+**/.cache/
+**/.env
+**/.env.*
+**/*.log
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# Keep W-series reports in Git; native state and raw experiment archives stay local.
+/goals_W/evidence/*
+!/goals_W/evidence/*.md
+
+# The Go binary embeds these small, reproducible production assets.
+!/web/dist/
+!/web/dist/**

@@ -1,0 +1,34 @@
+# 复制后修改任务清单。默认配置目录不受当前 shell 的 CODEX_HOME 影响。
+codex_home = "/home/zzw/.codex"
+
+[takeover]
+enabled = true
+# 可使用 `codex_guard.py watch THREAD_ID` 动态登记。
+thread_ids = []
+# 只自动发现同一共享服务中已加载、属于这些目录的根会话。
+workspaces = []
+takeover_after_seconds = 30
+
+[probe]
+interval_seconds = 3
+timeout_seconds = 120
+session_retries = 5
+
+[keepalive]
+mode = "status" # 或 weather
+interval_seconds = 10
+
+[runtime]
+poll_interval_seconds = 2
+auto_start_daemon = true
+
+# [[goals]]
+# id = "login-fix"
+# file = "/home/zzw/tasks/01-login.md"
+# cwd = "/home/zzw/project-a"
+# token_budget = 40000
+
+# [[goals]]
+# id = "performance"
+# file = "/home/zzw/tasks/02-performance.md"
+# cwd = "/home/zzw/project-b"

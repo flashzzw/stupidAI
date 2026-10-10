@@ -1,0 +1,202 @@
+{
+  "versions": {
+    "codex": {
+      "path": "/home/zzw/.codex/packages/standalone/releases/0.157.1-x86_64-unknown-linux-musl/bin/codex",
+      "version": "codex-cli 0.157.1"
+    },
+    "codex_server": {
+      "path": "/home/zzw/.codex/packages/app-server-daemon/releases/0.158.0-x86_64-unknown-linux-musl/bin/codex",
+      "version": "codex-cli 0.158.0"
+    },
+    "claude": {
+      "path": "/home/zzw/.local/share/claude/versions/2.1.280",
+      "version": "2.1.280 (Claude Code)"
+    },
+    "opencode": {
+      "path": "/home/zzw/.opencode/bin/opencode",
+      "version": "1.18.32"
+    },
+    "claude_sdk": {
+      "version": "0.3.280",
+      "lock": "tests/runtime/package-lock.json"
+    },
+    "node": {
+      "version": "v24.13.0"
+    }
+  },
+  "agents": {
+    "codex": {
+      "A": {
+        "native_id": "01a0e890-b21f-7910-bf31-f9b7c09e57eb",
+        "turn_receipts": [
+          {
+            "id": "01a0e890-b227-7633-8d79-61dcc8f1ce73",
+            "accepted_status": "inProgress"
+          },
+          {
+            "id": "01a0e890-b29c-7ca0-86a7-3e75ace6c9c8",
+            "accepted_status": "inProgress"
+          },
+          {
+            "id": "01a0e890-b326-7ac2-9016-ffecd274e64e",
+            "accepted_status": "inProgress"
+          }
+        ],
+        "history_turns": 3,
+        "route": {
+          "endpoint": "http://127.0.0.1:39083",
+          "model_requests": 3,
+          "model": "gpt-6-astra",
+          "test_auth_verified": true,
+          "resumed_context_verified": true
+        }
+      },
+      "B": {
+        "native_id": "01a0e890-b613-7ba3-b48c-510d30ac5b1c",
+        "turn_receipts": [
+          {
+            "id": "01a0e890-b61d-7a41-8317-927afb81a481",
+            "accepted_status": "inProgress"
+          },
+          {
+            "id": "01a0e890-b68e-77b3-8ea9-5d6f4bee27c1",
+            "accepted_status": "inProgress"
+          },
+          {
+            "id": "01a0e890-b71c-72e0-a0aa-8835de0ffb60",
+            "accepted_status": "inProgress"
+          }
+        ],
+        "history_turns": 3,
+        "route": {
+          "endpoint": "http://127.0.0.1:35491",
+          "model_requests": 3,
+          "model": "gpt-6-astra",
+          "test_auth_verified": true,
+          "resumed_context_verified": true
+        }
+      }
+    },
+    "claude": {
+      "A": {
+        "native_id": "e7e541d7-5f55-4482-ac04-0bd8dcd83e88",
+        "results": [
+          {
+            "uuid": "e38a6ae1-11f6-4eb0-b2a0-6294f8e8f3f8",
+            "session_id": "e7e541d7-5f55-4482-ac04-0bd8dcd83e88",
+            "subtype": "success"
+          },
+          {
+            "uuid": "ae21d0fe-da73-4417-8c55-b0dfd0f54636",
+            "session_id": "e7e541d7-5f55-4482-ac04-0bd8dcd83e88",
+            "subtype": "success"
+          },
+          {
+            "uuid": "57950af7-c926-4713-b311-47369a334aaf",
+            "session_id": "e7e541d7-5f55-4482-ac04-0bd8dcd83e88",
+            "subtype": "success"
+          }
+        ],
+        "history_messages": 4,
+        "streaming_verified": true,
+        "route": {
+          "endpoint": "http://127.0.0.1:38659",
+          "model_requests": 3,
+          "model": "claude-sonnet-4-6",
+          "test_auth_verified": true,
+          "resumed_context_verified": true
+        }
+      },
+      "B": {
+        "native_id": "da4db3f9-679e-4ff9-8e3a-daa623dea863",
+        "results": [
+          {
+            "uuid": "22e79484-d155-486e-8e8a-a38fbcecc43c",
+            "session_id": "da4db3f9-679e-4ff9-8e3a-daa623dea863",
+            "subtype": "success"
+          },
+          {
+            "uuid": "1899996f-56e1-4f3e-ae94-6cb190709f89",
+            "session_id": "da4db3f9-679e-4ff9-8e3a-daa623dea863",
+            "subtype": "success"
+          },
+          {
+            "uuid": "f4a5f4fc-0f3d-41b7-a83a-d071ec89a983",
+            "session_id": "da4db3f9-679e-4ff9-8e3a-daa623dea863",
+            "subtype": "success"
+          }
+        ],
+        "history_messages": 4,
+        "streaming_verified": true,
+        "route": {
+          "endpoint": "http://127.0.0.1:38461",
+          "model_requests": 3,
+          "model": "claude-sonnet-4-6",
+          "test_auth_verified": true,
+          "resumed_context_verified": true
+        }
+      }
+    },
+    "opencode": {
+      "A": {
+        "native_id": "ses_f176f3196ffeDWxWG3Cdj0Jffk",
+        "history_messages": 6,
+        "receipts": [
+          {
+            "accepted_http_status": 204,
+            "message_id": "msg_0e890d0330012GUkh5YUA80A67",
+            "completed_at": 1790608200215
+          },
+          {
+            "accepted_http_status": 204,
+            "message_id": "msg_0e890d243001yalK40h1V7IWcp",
+            "completed_at": 1790608200300
+          },
+          {
+            "accepted_http_status": 204,
+            "message_id": "msg_0e890d845001kbjIWRoyEZ2lmR",
+            "completed_at": 1790608202239
+          }
+        ],
+        "sse_events": 168,
+        "route": {
+          "endpoint": "http://127.0.0.1:39647",
+          "model_requests": 3,
+          "model": "fixture-model",
+          "test_auth_verified": true,
+          "resumed_context_verified": true
+        }
+      },
+      "B": {
+        "native_id": "ses_f176f1cd7ffed8Z54W9Cq7ZrV4",
+        "history_messages": 6,
+        "receipts": [
+          {
+            "accepted_http_status": 204,
+            "message_id": "msg_0e890e4df001HfCm33FJAfOBDq",
+            "completed_at": 1790608205479
+          },
+          {
+            "accepted_http_status": 204,
+            "message_id": "msg_0e890e6d7001qsW477dtZAEKuk",
+            "completed_at": 1790608205571
+          },
+          {
+            "accepted_http_status": 204,
+            "message_id": "msg_0e890eccc0017m76WKSw9Lkh7e",
+            "completed_at": 1790608207459
+          }
+        ],
+        "sse_events": 168,
+        "route": {
+          "endpoint": "http://127.0.0.1:40219",
+          "model_requests": 3,
+          "model": "fixture-model",
+          "test_auth_verified": true,
+          "resumed_context_verified": true
+        }
+      }
+    }
+  },
+  "evidence_directory": "/tmp/netcap-runtime-6ih4slzv"
+}

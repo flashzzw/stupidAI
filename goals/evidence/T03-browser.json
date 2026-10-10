@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-29",
+  "interaction_fixture": "/tmp/netcap-console-qyehgj81",
+  "approvals": [
+    "accept",
+    "cancel"
+  ],
+  "duplicate_reply": "one native effect",
+  "async_question": "message_input; retained after reload",
+  "unknown": [
+    "manual takeover retains occupancy",
+    "wrong association rejected",
+    "resume rejected",
+    "retained after console crash"
+  ],
+  "association": "original native candidate verified with discovery unavailable",
+  "interrupt": "owned turn ended and pause persisted",
+  "terminal_command": "wrapped within inspector",
+  "viewport_widths": [
+    1440,
+    768
+  ],
+  "page_overflow": false,
+  "baseline_fixture": "/tmp/netcap-console-blw49ce4",
+  "baseline_streamed_turns": 2,
+  "baseline_messages_after_reload": 4,
+  "baseline_offline": "writes disabled",
+  "baseline_reconnect": "snapshot restored",
+  "all_owned_processes_stopped": true
+}

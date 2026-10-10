@@ -1,0 +1,13 @@
+{
+  "date": "2026-09-30",
+  "scope": "Production Go/Web, owned shared Codex backend and local synthetic model; temporary configuration alias.",
+  "checks": {
+    "namespace_shown": true,
+    "alias_warning": true,
+    "handoff_completed": true,
+    "same_native_identity": true,
+    "history_after_reload": true,
+    "narrow_no_overflow": true,
+    "errors": []
+  }
+}

@@ -1,0 +1,404 @@
+{
+  "date": "2026-09-30",
+  "scope": "W01 native Claude failures and production fresh handoff; W02 cross-CLI shared stdio MCP invocation; local synthetic providers only",
+  "capability_verdicts": {
+    "claude_native_attachment_approval_continuity": "verified in fixture",
+    "claude_native_supervisor_tool_continuity": "verified in fixture",
+    "claude_native_worker_tool_output_continuity": "unverified: original tool survives but result absent from resumed request",
+    "native_roster_idle_is_execution_clear": "false: replacement worker idle while original tool alive",
+    "production_resume_bypasses_display_cache": "implemented and verified",
+    "shared_mcp_invocation_and_exclusion": "verified for this asset; Codex exclusion after daemon restart",
+    "strict_independent_foreground_live_adoption": "still unverified/unmet; previous evidence retained",
+    "production_capability_library_and_full_execution_snapshots": "not implemented"
+  },
+  "entries": {
+    "claude-supervisor-crash": {
+      "raw_root": "/tmp/netcap-claude-native-aqh50eyz",
+      "result": {
+        "execution": "completed",
+        "expectations_met": true,
+        "observations": {
+          "scope": "native --bg, real TTY approval, owned tool; local synthetic provider",
+          "checks": {
+            "approval_waits_without_tool_effect": true,
+            "attachment_crash_preserves_approval": true,
+            "in_flight_tool_visible": true,
+            "attachment_crash_preserves_tool": true,
+            "supervisor_restarted": true,
+            "original_worker_and_tool_survive": true,
+            "same_native_identity": true,
+            "tool_executed_once": true,
+            "all_local_requests_authenticated": true,
+            "provider_has_no_errors": true,
+            "original_tool_result_preserved": true,
+            "owned_supervisor_stopped": true
+          },
+          "original_job": {
+            "pid": 1063427,
+            "id": "f71658bb",
+            "cwd": "/tmp/netcap-claude-native-aqh50eyz/supervisor-crash/work",
+            "kind": "background",
+            "startedAt": 1790756266388,
+            "sessionId": "f71658bb-70c7-4d85-8605-0455c347d942",
+            "name": "NETCAP_NATIVE_TOOL",
+            "status": "waiting",
+            "waitingFor": "permission prompt",
+            "state": "blocked"
+          },
+          "tool_pid": 1063875,
+          "supervisor_pid": 1062974,
+          "restored_job": {
+            "pid": 1063427,
+            "id": "f71658bb",
+            "cwd": "/tmp/netcap-claude-native-aqh50eyz/supervisor-crash/work",
+            "kind": "background",
+            "startedAt": 1790756266388,
+            "sessionId": "f71658bb-70c7-4d85-8605-0455c347d942",
+            "name": "NETCAP_NATIVE_TOOL",
+            "status": "busy",
+            "state": "working"
+          },
+          "roster_idle_while_original_tool_alive": false,
+          "tool_result_returned": true,
+          "tool_error_returned": false,
+          "original_tool_output_continuity": "verified",
+          "final_job": {
+            "pid": 1063427,
+            "id": "f71658bb",
+            "cwd": "/tmp/netcap-claude-native-aqh50eyz/supervisor-crash/work",
+            "kind": "background",
+            "startedAt": 1790756266388,
+            "sessionId": "f71658bb-70c7-4d85-8605-0455c347d942",
+            "name": "NETCAP_NATIVE_TOOL",
+            "status": "idle",
+            "state": "working"
+          }
+        }
+      },
+      "result_sha256": "1fca8a9c585536dac4a2f37bae853e05ef666ab1053ce0b4e4db9cdd41901334",
+      "versions": {
+        "claude": {
+          "version": "2.1.280 (Claude Code)",
+          "path": "/home/zzw/.local/share/claude/versions/2.1.280"
+        }
+      }
+    },
+    "claude-worker-crash": {
+      "raw_root": "/tmp/netcap-claude-native-1g83f7cp",
+      "result": {
+        "execution": "completed",
+        "expectations_met": true,
+        "observations": {
+          "scope": "native --bg, real TTY approval, owned tool; local synthetic provider",
+          "checks": {
+            "approval_waits_without_tool_effect": true,
+            "attachment_crash_preserves_approval": true,
+            "in_flight_tool_visible": true,
+            "attachment_crash_preserves_tool": true,
+            "same_native_identity": true,
+            "tool_executed_once": true,
+            "all_local_requests_authenticated": true,
+            "provider_has_no_errors": true,
+            "next_prompt_keeps_identity_and_history": true,
+            "owned_supervisor_stopped": true
+          },
+          "original_job": {
+            "pid": 1057642,
+            "id": "533c97a1",
+            "cwd": "/tmp/netcap-claude-native-1g83f7cp/worker-crash/work",
+            "kind": "background",
+            "startedAt": 1790755946776,
+            "sessionId": "533c97a1-15a7-424f-887e-52a3ecc7e850",
+            "name": "NETCAP_NATIVE_TOOL",
+            "status": "waiting",
+            "waitingFor": "permission prompt",
+            "state": "blocked"
+          },
+          "tool_pid": 1058151,
+          "tool_alive_after_worker_crash": true,
+          "restored_job": {
+            "pid": 1058545,
+            "id": "533c97a1",
+            "cwd": "/tmp/netcap-claude-native-1g83f7cp/worker-crash/work",
+            "kind": "background",
+            "startedAt": 1790755961824,
+            "sessionId": "533c97a1-15a7-424f-887e-52a3ecc7e850",
+            "name": "NETCAP_NATIVE_TOOL",
+            "status": "idle",
+            "state": "working"
+          },
+          "roster_idle_while_original_tool_alive": true,
+          "tool_result_returned": false,
+          "tool_error_returned": false,
+          "tool_completed_on_disk": true,
+          "original_tool_output_continuity": "unverified",
+          "final_job": {
+            "pid": 1058545,
+            "id": "533c97a1",
+            "cwd": "/tmp/netcap-claude-native-1g83f7cp/worker-crash/work",
+            "kind": "background",
+            "startedAt": 1790755961824,
+            "sessionId": "533c97a1-15a7-424f-887e-52a3ecc7e850",
+            "name": "NETCAP_NATIVE_TOOL",
+            "status": "idle",
+            "state": "working"
+          }
+        }
+      },
+      "result_sha256": "57616a4d1bfadf0406bb26ffb6becc6662677c1b9b0d8ab8f81c5760a26782b2",
+      "versions": {
+        "claude": {
+          "version": "2.1.280 (Claude Code)",
+          "path": "/home/zzw/.local/share/claude/versions/2.1.280"
+        }
+      }
+    },
+    "codex-mcp-bindings": {
+      "raw_root": "/tmp/netcap-codex-mcp-xr3s_6m0",
+      "result": {
+        "scope": "same stdio MCP definition as Claude; two isolated native Codex profiles; invocation then excluded same-ID resume after owned daemon restart",
+        "results": {
+          "A": {
+            "execution": "completed",
+            "expectations_met": true,
+            "checks": {
+              "tool_called_once_with_bound_identity": true,
+              "exact_tool_result_returned_to_model": true,
+              "selected_tool_in_native_inventory": true,
+              "same_native_id": true,
+              "original_history_preserved": true,
+              "excluded_from_native_inventory": true,
+              "excluded_from_model_tools": true,
+              "exclusion_did_not_invoke_tool": true,
+              "model_credentials_bound": true,
+              "provider_has_no_errors": true
+            },
+            "native_id": "01a0f166-b002-7aa3-b208-81c9ecc5bd28",
+            "actual_calls": [
+              {
+                "profile": "A",
+                "cwd": "/tmp/netcap-codex-mcp-xr3s_6m0/A/work",
+                "credential_matches": true
+              }
+            ]
+          },
+          "B": {
+            "execution": "completed",
+            "expectations_met": true,
+            "checks": {
+              "tool_called_once_with_bound_identity": true,
+              "exact_tool_result_returned_to_model": true,
+              "selected_tool_in_native_inventory": true,
+              "same_native_id": true,
+              "original_history_preserved": true,
+              "excluded_from_native_inventory": true,
+              "excluded_from_model_tools": true,
+              "exclusion_did_not_invoke_tool": true,
+              "model_credentials_bound": true,
+              "provider_has_no_errors": true
+            },
+            "native_id": "01a0f166-b002-7ec3-8586-9dad2844c393",
+            "actual_calls": [
+              {
+                "profile": "B",
+                "cwd": "/tmp/netcap-codex-mcp-xr3s_6m0/B/work",
+                "credential_matches": true
+              }
+            ]
+          }
+        }
+      },
+      "result_sha256": "c05bbdefd4047cb0721beac051970f86a5809afa3cbbd5d19fd0cbe1a38e4ac4",
+      "versions": {
+        "codex": {
+          "version": "codex-cli 0.157.1",
+          "path": "/home/zzw/.codex/packages/standalone/releases/0.157.1-x86_64-unknown-linux-musl/bin/codex"
+        },
+        "server": {
+          "version": "codex-cli 0.158.0",
+          "path": "/home/zzw/.codex/packages/app-server-daemon/releases/0.158.0-x86_64-unknown-linux-musl/bin/codex"
+        }
+      }
+    },
+    "claude-mcp-bindings": {
+      "raw_root": "/tmp/netcap-mcp-binding-1iahy5br",
+      "result": {
+        "scope": "shared stdio MCP definition; separate native Claude profiles/cwd/model and MCP credentials; selected invocation then excluded same-ID resume",
+        "results": {
+          "A": {
+            "execution": "completed",
+            "expectations_met": true,
+            "checks": {
+              "tool_called_once": true,
+              "bound_identity_and_credential": true,
+              "bound_working_directory": true,
+              "tool_result_returned_to_model": true,
+              "same_native_id": true,
+              "excluded_from_native_inventory": true,
+              "excluded_from_model_tools": true,
+              "exclusion_did_not_invoke_tool": true,
+              "model_credentials_bound": true
+            },
+            "native_id": "30823543-3057-475d-854b-49184facb628",
+            "actual_calls": [
+              {
+                "profile": "A",
+                "cwd": "/tmp/netcap-mcp-binding-1iahy5br/A/work",
+                "credential_matches": true
+              }
+            ]
+          },
+          "B": {
+            "execution": "completed",
+            "expectations_met": true,
+            "checks": {
+              "tool_called_once": true,
+              "bound_identity_and_credential": true,
+              "bound_working_directory": true,
+              "tool_result_returned_to_model": true,
+              "same_native_id": true,
+              "excluded_from_native_inventory": true,
+              "excluded_from_model_tools": true,
+              "exclusion_did_not_invoke_tool": true,
+              "model_credentials_bound": true
+            },
+            "native_id": "9b1583d1-0b8f-48af-b705-3e297e40a0db",
+            "actual_calls": [
+              {
+                "profile": "B",
+                "cwd": "/tmp/netcap-mcp-binding-1iahy5br/B/work",
+                "credential_matches": true
+              }
+            ]
+          }
+        }
+      },
+      "result_sha256": "f9f9d36bb1af06e3b70222a6223fa1901c20a8afcc003acbade0a75f0c1c8ee9",
+      "versions": {
+        "claude": {
+          "version": "2.1.280 (Claude Code)",
+          "path": "/home/zzw/.local/share/claude/versions/2.1.280"
+        }
+      }
+    },
+    "production-codex-control": {
+      "raw_root": "/tmp/netcap-handoff-y28m1shx",
+      "result": {
+        "execution": "completed",
+        "expectations_met": true,
+        "observations": {
+          "checks": {
+            "historical_terminal_input_acknowledged": true,
+            "duplicate_handoff_idempotent": true,
+            "in_flight_resume_refused": true,
+            "tool_survives_controller_crash": true,
+            "same_native_identity_after_crash": true,
+            "tool_executed_once": true,
+            "control_restored_after_tool": true,
+            "all_requests_authenticated": true
+          },
+          "fixture": "/tmp/netcap-console-cqeirva2",
+          "scope": "production Application, real shared-backend TUI, owned tool and Go crash; no independent foreground adoption",
+          "native_id": "01a0f165-4530-7ac2-be2b-533943ac7461",
+          "tool_pid": 1064937,
+          "approval_id": "codex-local/fac6c365-371a-430e-9303-eb4f0e3b9ac5/0"
+        }
+      },
+      "result_sha256": "3bf9b1ccb582afc0fec23e1d5a36c43f3ab8f832805cd61dcd49468934f9fc67",
+      "versions": {
+        "codex": {
+          "version": "codex-cli 0.157.1",
+          "path": "/home/zzw/.codex/packages/standalone/releases/0.157.1-x86_64-unknown-linux-musl/bin/codex"
+        },
+        "server": {
+          "version": "codex-cli 0.158.0",
+          "path": "/home/zzw/.codex/packages/app-server-daemon/releases/0.158.0-x86_64-unknown-linux-musl/bin/codex"
+        }
+      }
+    },
+    "production-claude-idle-handoff": {
+      "raw_root": "/tmp/netcap-console-nxj8rcgz",
+      "result": {
+        "go_rss_kib": 17088,
+        "bridge_rss_kib": 91780,
+        "cli_rss_kib": 202580,
+        "after_reclaim_go_rss_kib": 18600,
+        "native_id": "fa585fb4-edfd-4669-93e3-fc9750561827",
+        "idle_processes_reclaimed": true,
+        "fresh_handoff_without_model_input": true,
+        "resumed_same_native_history": true
+      },
+      "result_sha256": "aea2edb95e4c5d9bcf850d717a9b2376aa075d971e46c2b703dee6d216c85bf2"
+    }
+  },
+  "shared_mcp_source_sha256": "db09d9844a680292efd007ec7f2da533cc7d1f4fd91c2706ba09c9af57981eaf",
+  "verification": {
+    "go_test_race_all": "passed",
+    "go_vet_all": "passed",
+    "make_dev_build": "passed",
+    "python_syntax": "passed",
+    "new_regressions": "passed",
+    "production_codex_control": "passed",
+    "production_claude_idle_handoff": "passed",
+    "browser": "not repeated: UI source unchanged",
+    "document_links_and_anchors": "passed: 78 relative references",
+    "evidence_hashes": "passed",
+    "owned_process_cleanup": "passed: no fixture processes remain",
+    "baseline_comparison": "passed: no pre-existing files removed"
+  },
+  "reproduced_before_fix": {
+    "command": "go test ./internal/app -run '^TestResumeCannotGrantControlFromDisplayCache$' -count=1",
+    "exit_code": 1,
+    "error": "resume granted control from cached idle evidence while the fresh read failed"
+  },
+  "source_sha256_at_archive": {
+    "internal/app/application.go": "2d2565076aafc46b333d07e0b653be63ebe9d97e65a28feb7635f53d9e5c901a",
+    "internal/app/application_test.go": "0cbf710cdc89c1bb86b2878a5a6a07dc26b81d0475d57c04c19806b831e4babf",
+    "internal/app/control_handoff_test.go": "a73ba2753998911bce6a81390eb2a9a0f6a37866bf3f38ab052b7d1a0ff0522c",
+    "internal/runtime/adapters.go": "2b52ac958fac4dd0643d02d147edd6dacd5c19ebdf719fa316adc99b463f906d",
+    "internal/runtime/claude.go": "2e41dfb3cf286a16c2ebe054f7529f5b8a18ae6261e1db292af3e8ddf9b21639",
+    "internal/runtime/claude_control_test.go": "79016771ab5c813c2b8004d16018d2fa464be7cef66cff17cbe2e3710d069233",
+    "internal/runtime/codex.go": "57c812aa57e7d2472bc4b43cb794bfc7765769b68844aee5d4e90578b1babc49",
+    "internal/runtime/opencode.go": "c6547cc95a2dfb87c083d5e198dc83314a3b3afea5e4139d86a015bc1daca46e",
+    "internal/runtime/runtime.go": "46ef187d9188e1afe396f8cb471007a68903954f18f6558769e6821e6fde82b2",
+    "tests/claude_console_smoke.py": "23ed970db733a491a1075e062a637cc2f6cbd078cd16faed7b7485be2d6edd18",
+    "tests/claude_idle_smoke.py": "db095f94b889cf8196a8f4082d455b780d2fb8721a61b07d44b4c4a484bc95a9",
+    "tests/codex_mcp_binding_probe.py": "4f0d81e7d6ddc8019b4a0721fd0941d71f78b86a4a73b7884fef9cc54637de29",
+    "tests/console_fixture.py": "5a2c1377b2527994eaca74739fadd8d89859f5afb745dda9629f54747ffd6647",
+    "tests/execution_config_probe.py": "0f7a58bee8e303bde3d1a96a76201b96d2abf9d41f87f90cd5dd6ab46967a011",
+    "tests/go_cli_smoke.py": "1ea0c2f86aa64dd5fc919593725eda3f664b79cf69eff4355f374730bf84e1e6",
+    "tests/mcp_binding_probe.py": "04d8feff95f67dc315a23347e11839a76d25264e8a5f80a24ac8c2d1712f21fe",
+    "tests/native_claude_lifecycle_probe.py": "b8cefee0219444bb5db5fab7794feab0a222b64e715c876070f77db05241fad9",
+    "tests/runtime/common.py": "586069b82d53d20fa350d90bbc823f7bda155693945630936aed21e03e757cd7",
+    "tests/workbench_boundary_probe.py": "7fb79669585adb23866b6a6a0698c608d8fe21cc54b1d0f9473dbb858085d42c"
+  },
+  "official_sources": [
+    {
+      "url": "https://code.claude.com/docs/en/agent-view.md",
+      "raw_path": "/tmp/netcap-w01-native-denq0hrl/claude-agent-view.md",
+      "sha256": "783be4d4d800479f2d373a67a6e8a6fcd5be03fc6c6bbf06aba19988dbaba1eb"
+    },
+    {
+      "url": "https://learn.chatgpt.com/docs/app-server",
+      "raw_path": "/tmp/netcap-w01-native-denq0hrl/codex-app-server.html",
+      "sha256": "afe7207cec3aeeae42d0fca1639617521304a92c5fb22de0d446c55903d24e10"
+    }
+  ],
+  "fixture_development_failures": [
+    {
+      "raw_root": "/tmp/netcap-codex-mcp-cyrkr3a_",
+      "reason": "fixture did not answer native MCP permission prompt; no tool call; corrected by accepting only owned fixture approval"
+    },
+    {
+      "raw_root": "/tmp/netcap-claude-native-ccq2m_7w",
+      "reason": "history assertion included an auxiliary request; corrected to match exact user prompt; missing original tool result remains a real gap"
+    }
+  ],
+  "limits": [
+    "Passing experiment checks do not imply worker crash output continuity; see separate capability verdict",
+    "Native Claude background supervisor is not the production SDK bridge adapter",
+    "No automatic control grant inferred from native jobs JSON or PID alone",
+    "No real provider, external notification, user configuration migration, commit or push",
+    "W01/W02 remain in progress; W04-W07 not started"
+  ]
+}

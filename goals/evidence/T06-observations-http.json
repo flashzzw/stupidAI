@@ -1,0 +1,20 @@
+{
+  "agents": [
+    "codex",
+    "claude",
+    "opencode"
+  ],
+  "formats": [
+    "hook",
+    "opencode",
+    "otel"
+  ],
+  "identity_isolation": true,
+  "command_denials": 24,
+  "provider_calls": 0,
+  "native_servers": 0,
+  "late_pending": "expired",
+  "delivery_dedup": "persisted",
+  "archive": "persisted",
+  "authorization": "source scoped"
+}

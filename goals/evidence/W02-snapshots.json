@@ -1,0 +1,275 @@
+{
+  "date": "2026-09-30",
+  "scope": "W02 immutable startup snapshot, external capability references and source drift checks; not native capability selection",
+  "production_behaviors": [
+    "snapshot and create intent persisted before native dispatch",
+    "all subsequent operations keep initial snapshot ID",
+    "external capability metadata and bounded full-source digests; no content/credential values",
+    "changed or unavailable recorded sources prevent next send/respond/resume",
+    "source check repeats between intent commit and dispatch",
+    "registry changes preserve historical references",
+    "legacy/observed/probe/OpenCode records acquire no invented snapshots"
+  ],
+  "coverage": "recorded_sources_only",
+  "entries": {
+    "codex-snapshots": {
+      "raw_root": "/tmp/netcap-console-35nf066v",
+      "result": {
+        "backend": "codex",
+        "execution": "completed",
+        "expectations_met": true,
+        "checks": {
+          "snapshot_records_version_and_binding": true,
+          "reference_is_recorded_without_loading_claim": true,
+          "source_content_not_exposed": true,
+          "inspection_has_no_model_side_effect": true,
+          "create_retry_is_idempotent": true,
+          "reference_did_not_implicitly_load_asset": true,
+          "restart_and_registry_update_preserve_snapshot": true,
+          "dependent_script_drift_visible": true,
+          "drift_refuses_send": true,
+          "drift_refuses_resume": true,
+          "drift_did_not_send_model_input": true,
+          "drift_did_not_overwrite_snapshot": true,
+          "original_history_and_identity_preserved": true,
+          "all_operations_reference_original_snapshot": true,
+          "model_credentials_bound": true,
+          "provider_has_no_errors": true
+        },
+        "native_id": "01a0f173-a275-75c3-a45f-b294dfacf296",
+        "snapshot": {
+          "id": "566b3fd5-9d92-4132-9bfe-479754e5b303",
+          "schema_version": 1,
+          "session_id": "1cfe37ed-d91c-446c-b66f-7e00616490ed",
+          "created_at": "2026-09-30T08:34:42.361688027Z",
+          "instance": {
+            "id": "codex-local",
+            "kind": "codex",
+            "executable": "/home/zzw/.codex/packages/standalone/releases/0.157.1-x86_64-unknown-linux-musl/bin/codex",
+            "profile": "/tmp/netcap-console-35nf066v/codex",
+            "socket": "/tmp/netcap-console-35nf066v/codex.sock",
+            "version": "0.157.1/0.158.0",
+            "policy_revision": "m0-1",
+            "env_allow": [
+              "NETCAP_FIXTURE_KEY"
+            ]
+          },
+          "cli_version": "codex-cli 0.157.1",
+          "route": {
+            "id": "route-a",
+            "instance_id": "codex-local",
+            "provider": "fixture",
+            "endpoint": "http://127.0.0.1:42879/v1",
+            "model": "gpt-6-astra",
+            "credential_ref": "env:NETCAP_FIXTURE_KEY",
+            "credential_revision": "1",
+            "config_revision": "1"
+          },
+          "cwd": "/tmp/netcap-console-35nf066v/work",
+          "state_namespace": "/tmp/netcap-console-35nf066v/codex",
+          "permission": "read_only",
+          "profile_source": {
+            "path": "/tmp/netcap-console-35nf066v/codex/config.toml",
+            "resolved_path": "/tmp/netcap-console-35nf066v/codex/config.toml",
+            "kind": "file",
+            "sha256": "f5e431c28231b3b92c8133c35c4a91ccfc2c848686483b4ffffd2176ffb01a63"
+          },
+          "capability_refs": [
+            {
+              "asset": {
+                "id": "shared-skill",
+                "name": "快照验收 Skill",
+                "kind": "skill",
+                "version": "v1",
+                "source": "/tmp/netcap-console-35nf066v/registered-skill",
+                "backends": [
+                  "codex",
+                  "claude"
+                ]
+              },
+              "source": {
+                "path": "/tmp/netcap-console-35nf066v/registered-skill",
+                "resolved_path": "/tmp/netcap-console-35nf066v/registered-skill",
+                "kind": "directory",
+                "sha256": "8eb11cdbbc5ddac0eea0a6c3d296a3cfc8afce9e0bfee71f678708102edd0d0a"
+              }
+            }
+          ],
+          "coverage": "recorded_sources_only"
+        }
+      },
+      "result_sha256": "985ef878a31abddad8cd0b27f700601194118f47aa2d90822e2e57c4a7b86a7e"
+    },
+    "claude-snapshots": {
+      "raw_root": "/tmp/netcap-console-weysdoug",
+      "result": {
+        "backend": "claude",
+        "execution": "completed",
+        "expectations_met": true,
+        "checks": {
+          "snapshot_records_version_and_binding": true,
+          "reference_is_recorded_without_loading_claim": true,
+          "source_content_not_exposed": true,
+          "inspection_has_no_model_side_effect": true,
+          "create_retry_is_idempotent": true,
+          "reference_did_not_implicitly_load_asset": true,
+          "restart_and_registry_update_preserve_snapshot": true,
+          "dependent_script_drift_visible": true,
+          "drift_refuses_send": true,
+          "drift_refuses_resume": true,
+          "drift_did_not_send_model_input": true,
+          "drift_did_not_overwrite_snapshot": true,
+          "original_history_and_identity_preserved": true,
+          "all_operations_reference_original_snapshot": true,
+          "model_credentials_bound": true,
+          "provider_has_no_errors": true
+        },
+        "native_id": "0b18888c-98c6-4dc6-9d38-04cce5ad57e5",
+        "snapshot": {
+          "id": "4338e37d-b83e-4317-bfba-6e491bdcfd99",
+          "schema_version": 1,
+          "session_id": "4e009ef2-f7de-4650-9f0d-d91d49555e22",
+          "created_at": "2026-09-30T08:34:42.056579802Z",
+          "instance": {
+            "id": "claude-local",
+            "kind": "claude",
+            "executable": "/home/zzw/.local/bin/claude",
+            "profile": "/tmp/netcap-console-weysdoug/claude",
+            "socket": "",
+            "version": "2.1.280/0.3.280",
+            "policy_revision": "m0-1",
+            "env_allow": [
+              "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+              "DISABLE_AUTOUPDATER",
+              "DISABLE_TELEMETRY",
+              "DISABLE_ERROR_REPORTING"
+            ],
+            "bridge": "/home/zzw/codex-netcap/bridges/claude/dist/main.js",
+            "node_executable": "/home/zzw/.nvm/versions/node/v24.13.0/bin/node"
+          },
+          "cli_version": "2.1.280 (Claude Code)",
+          "route": {
+            "id": "route-a",
+            "instance_id": "claude-local",
+            "provider": "anthropic",
+            "endpoint": "http://127.0.0.1:39477",
+            "model": "claude-sonnet-4-6",
+            "credential_ref": "env:NETCAP_CLAUDE_KEY",
+            "credential_revision": "1",
+            "config_revision": "1"
+          },
+          "cwd": "/tmp/netcap-console-weysdoug/work",
+          "state_namespace": "/tmp/netcap-console-weysdoug/claude",
+          "permission": "read_only",
+          "profile_source": {
+            "path": "/tmp/netcap-console-weysdoug/claude/settings.json",
+            "resolved_path": "/tmp/netcap-console-weysdoug/claude/settings.json",
+            "kind": "absent",
+            "optional": true
+          },
+          "capability_refs": [
+            {
+              "asset": {
+                "id": "shared-skill",
+                "name": "快照验收 Skill",
+                "kind": "skill",
+                "version": "v1",
+                "source": "/tmp/netcap-console-weysdoug/registered-skill",
+                "backends": [
+                  "codex",
+                  "claude"
+                ]
+              },
+              "source": {
+                "path": "/tmp/netcap-console-weysdoug/registered-skill",
+                "resolved_path": "/tmp/netcap-console-weysdoug/registered-skill",
+                "kind": "directory",
+                "sha256": "8eb11cdbbc5ddac0eea0a6c3d296a3cfc8afce9e0bfee71f678708102edd0d0a"
+              }
+            }
+          ],
+          "coverage": "recorded_sources_only"
+        }
+      },
+      "result_sha256": "6d3eafde389ae43caba69bccb2408b6577e237a0ce1c38e46d1a05605064a13e"
+    },
+    "codex-control-regression": {
+      "raw_root": "/tmp/netcap-handoff-bwk7wa9z",
+      "result": {
+        "execution": "completed",
+        "expectations_met": true,
+        "observations": {
+          "checks": {
+            "historical_terminal_input_acknowledged": true,
+            "duplicate_handoff_idempotent": true,
+            "in_flight_resume_refused": true,
+            "tool_survives_controller_crash": true,
+            "same_native_identity_after_crash": true,
+            "tool_executed_once": true,
+            "control_restored_after_tool": true,
+            "all_requests_authenticated": true
+          },
+          "fixture": "/tmp/netcap-console-4cp69ulf",
+          "scope": "production Application, real shared-backend TUI, owned tool and Go crash; no independent foreground adoption",
+          "native_id": "01a0f179-8e62-78d3-80d8-3d1c610ba2bd",
+          "tool_pid": 1083629,
+          "approval_id": "codex-local/2ebcee40-aff7-4e69-b265-30c3e878da83/0"
+        }
+      },
+      "result_sha256": "102fd5cb7bb47f6a2af6d26926e2e20fae0ae2c01c436dde7722ff0a1094cbed"
+    },
+    "claude-idle-regression": {
+      "raw_root": "/tmp/netcap-console-ln3p1m5n",
+      "result": {
+        "go_rss_kib": 15936,
+        "bridge_rss_kib": 92164,
+        "cli_rss_kib": 223560,
+        "after_reclaim_go_rss_kib": 18180,
+        "native_id": "8eda81d6-5a85-4b27-89b3-baf5697bbf65",
+        "idle_processes_reclaimed": true,
+        "fresh_handoff_without_model_input": true,
+        "resumed_same_native_history": true
+      },
+      "result_sha256": "7c1235f3eae798392560f89cfa4a92cc04b8db35e270bb0f10a5a36b4fdd6948"
+    }
+  },
+  "browser": "W02-snapshots-browser.json",
+  "verification": {
+    "go_test_race_all": "passed",
+    "go_vet_all": "passed",
+    "make_dev_build": "passed",
+    "python_syntax": "passed",
+    "production_codex_claude_three_turns": "passed",
+    "previous_control_idle_regressions": "passed",
+    "browser": "passed",
+    "document_references": "passed: 86 relative links and anchors",
+    "evidence_hashes": "passed",
+    "owned_process_cleanup": "passed: no remaining fixture processes",
+    "baseline_comparison": "passed: no existing files removed"
+  },
+  "source_sha256_at_archive": {
+    "internal/app/application.go": "d92d578706fc0bdc8ea9a00c4196adf631d38daff0bf08ca0a5de65f3d547891",
+    "internal/app/config.go": "4acb50d312770f0410f9cfdb994d4011f7a7d169b55617ded8f0145669e19d23",
+    "internal/app/config_test.go": "deab3ffe6c0bae5e5b4c44ef52dae4bbf032424d8b2fa15e8ac70d638741651a",
+    "internal/app/execution.go": "b9963ad0005b9a64db55ebb0405502fa85a790acc98b80920357506be927c68a",
+    "internal/app/execution_test.go": "9f7f4ee5357521bf42f40e2d4767100465f5fa2d95e8d70cb4512eb73e7f6056",
+    "internal/app/model.go": "4e3421830fa04609f755afe9710f3de76edb47fd0d921390a125b5774d91ed1e",
+    "internal/app/queries.go": "60197fbc0436dc453b570eb495f7b77787c41e5cfbca8cd6e6b67ce703b8614b",
+    "internal/app/routes.go": "b8c8510e6496fe6c70116424d13697a8a0d7bcafca58ac5aba4be341427dbe68",
+    "internal/console/server.go": "d1f3699a80aa4df1c4c792bed4fbd3f0fad8cca00e4a69ef4a10dee31830b683",
+    "internal/console/server_test.go": "40218c19af86200a52daac1c7d2aca4ee917617fbd8922ee03876078fcbedf43",
+    "tests/execution_snapshot_smoke.py": "9900358cf6830cc111494155252d70d3ef3c686d82ad5533e2596305a1b5f456",
+    "web/src/ExecutionDetails.tsx": "04b36d127185d34b8d8fc019bfb71438e82b54c561fd96e99838a872e344eefb",
+    "web/src/main.tsx": "8af3a0e1c9b85b72c74ccaa9667def46b4701eb700a625f094fce539d3f8feb0",
+    "web/src/style.css": "0105d8909e55a9ae326cf930afc2ab0036321ecf0cfa226dc6ebd26a9795e4d9"
+  },
+  "limits": [
+    "references do not install, enable, disable, load or authorize native assets",
+    "only main CLI configuration and explicitly registered sources are captured; complete inheritance and effective configuration not verified",
+    "declarative version/backend metadata are not compatibility evidence",
+    "files are neither frozen nor backed up; changes detected on explicit checks or before later inputs",
+    "at most 16 references; each source at most 2048 entries/32 MiB; nested symlinks/special files unsupported",
+    "role/Gate versions, native per-resource evidence, explicit reconfiguration and multiple snapshot versions pending",
+    "W01 strict foreground and worker tool output gaps remain; W01/W02 in progress; W04-W07 not started"
+  ]
+}

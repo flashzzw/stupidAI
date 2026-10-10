@@ -1,0 +1,72 @@
+{
+  "production_build": true,
+  "viewports": [
+    1440,
+    768
+  ],
+  "observed": {
+    "agents": 3,
+    "controls": "hidden",
+    "pending": "original terminal only",
+    "sources": "visible",
+    "archive_reload": true,
+    "overflow": false
+  },
+  "capabilities": {
+    "unavailable_cli": "visible",
+    "declared_version": "does not grant capabilities",
+    "unverified_route": "disabled"
+  },
+  "managed": {
+    "agents": {
+      "codex": {
+        "approval": "accepted",
+        "question": "single",
+        "history_after_reload": true,
+        "interrupt": "paused",
+        "capability": "visible",
+        "source": "runtime"
+      },
+      "claude": {
+        "approval": "accepted",
+        "question": "single",
+        "history_after_reload": true,
+        "interrupt": "paused",
+        "capability": "visible",
+        "source": "runtime"
+      },
+      "opencode": {
+        "approval": "accepted",
+        "question": "multiple",
+        "history_after_reload": true,
+        "interrupt": "paused",
+        "capability": "visible",
+        "source": "runtime"
+      }
+    },
+    "offline": "disabled and recovered",
+    "overflow": false,
+    "page_errors": []
+  },
+  "recovery": {
+    "unknown": "retained through crash",
+    "takeover": "preserved",
+    "resume": "rejected while uncertain",
+    "full_evidence": "original turn resolved",
+    "association": "original creation verified",
+    "native_creates": 2,
+    "native_sends": 1
+  },
+  "screenshots": [
+    ".dev/logs/T06-observed-claude.png",
+    ".dev/logs/T06-observed-768.png",
+    ".dev/logs/T06-capability-unavailable.png",
+    ".dev/logs/T06-capability-unverified.png",
+    ".dev/logs/T06-alpha-codex-approval.png",
+    ".dev/logs/T06-alpha-claude-approval.png",
+    ".dev/logs/T06-alpha-opencode-approval.png",
+    ".dev/logs/T06-alpha-768.png",
+    ".dev/logs/T06-unknown-restart.png",
+    ".dev/logs/T06-associated.png"
+  ]
+}

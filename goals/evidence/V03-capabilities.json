@@ -1,0 +1,498 @@
+{
+  "date": "2026-09-30",
+  "scope": "real pinned CLIs with synthetic local providers, not production feature acceptance",
+  "versions": {
+    "codex": {
+      "version": "codex-cli 0.157.1",
+      "path": "/home/zzw/.codex/packages/standalone/releases/0.157.1-x86_64-unknown-linux-musl/bin/codex"
+    },
+    "server": {
+      "version": "codex-cli 0.158.0",
+      "path": "/home/zzw/.codex/packages/app-server-daemon/releases/0.158.0-x86_64-unknown-linux-musl/bin/codex"
+    },
+    "claude": {
+      "version": "2.1.280 (Claude Code)",
+      "path": "/home/zzw/.local/share/claude/versions/2.1.280"
+    }
+  },
+  "commands": [
+    {
+      "command": "python3 tests/execution_config_probe.py",
+      "exit_code": 0,
+      "evidence_root": "/tmp/netcap-config-probe-pjtjcyg7"
+    },
+    {
+      "command": "python3 tests/claude_attach_probe.py",
+      "exit_code": 0,
+      "evidence_root": "/tmp/netcap-claude-attach-lzf6djm5",
+      "resolved_auth_source": "helper"
+    }
+  ],
+  "cases": {
+    "concurrent": {
+      "execution": "completed",
+      "expectations_met": true,
+      "observations": {
+        "four_requests_in_flight_together": true,
+        "profiles": {
+          "codex-A": {
+            "native_id": "01a0f082-6466-7d01-8d2d-a7726a8efb46",
+            "turn_receipts": [
+              {
+                "id": "01a0f082-64c1-7c41-92dc-4cd6eeee6d87",
+                "accepted_status": "inProgress"
+              },
+              {
+                "id": "01a0f082-654d-7c03-a31e-74491c91c852",
+                "accepted_status": "inProgress"
+              },
+              {
+                "id": "01a0f082-65f7-7eb0-a268-12962bff9634",
+                "accepted_status": "inProgress"
+              }
+            ],
+            "history_turns": 3,
+            "route": {
+              "endpoint": "http://127.0.0.1:44573",
+              "model_requests": 3,
+              "model": "gpt-6-astra",
+              "test_auth_verified": true,
+              "resumed_context_verified": true
+            },
+            "first_request": 81627.060980223,
+            "first_release": 81627.061025023
+          },
+          "codex-B": {
+            "native_id": "01a0f082-6466-7b02-b075-bd47183ddcc1",
+            "turn_receipts": [
+              {
+                "id": "01a0f082-64c1-7f12-a728-2a31e5837609",
+                "accepted_status": "inProgress"
+              },
+              {
+                "id": "01a0f082-654d-70a2-9aa2-b10a80a404b6",
+                "accepted_status": "inProgress"
+              },
+              {
+                "id": "01a0f082-65f6-7162-a3fc-19ccf8e25dd7",
+                "accepted_status": "inProgress"
+              }
+            ],
+            "history_turns": 3,
+            "route": {
+              "endpoint": "http://127.0.0.1:42189",
+              "model_requests": 3,
+              "model": "gpt-6-astra",
+              "test_auth_verified": true,
+              "resumed_context_verified": true
+            },
+            "first_request": 81627.060946623,
+            "first_release": 81627.061610825
+          },
+          "claude-A": {
+            "native_id": "11048f48-9bc4-4b32-acd9-e98b3a8b0c51",
+            "route": {
+              "endpoint": "http://127.0.0.1:42275",
+              "model_requests": 3,
+              "model": "claude-sonnet-4-6",
+              "test_auth_verified": true,
+              "resumed_context_verified": true
+            },
+            "settings_file": "/tmp/netcap-config-probe-pjtjcyg7/concurrent/claude-A/provider.settings.json",
+            "state_dir": "/tmp/netcap-config-probe-pjtjcyg7/concurrent/claude-A/claude",
+            "first_request": 81626.810280884,
+            "first_release": 81627.061472525
+          },
+          "claude-B": {
+            "native_id": "31a8d1ac-bce0-462f-8f9b-78bcf6cad1b4",
+            "route": {
+              "endpoint": "http://127.0.0.1:41379",
+              "model_requests": 3,
+              "model": "claude-sonnet-4-6",
+              "test_auth_verified": true,
+              "resumed_context_verified": true
+            },
+            "settings_file": "/tmp/netcap-config-probe-pjtjcyg7/concurrent/claude-B/provider.settings.json",
+            "state_dir": "/tmp/netcap-config-probe-pjtjcyg7/concurrent/claude-B/claude",
+            "first_request": 81626.814666772,
+            "first_release": 81627.061901326
+          }
+        },
+        "scope": "separate HOME/state/config/cwd; local provider; completed-turn resume"
+      }
+    },
+    "claude-assets": {
+      "execution": "completed",
+      "expectations_met": true,
+      "observations": {
+        "enabled": {
+          "project_skill": true,
+          "plugin_skill": true,
+          "mcp_connected": true,
+          "project_rule": true
+        },
+        "excluded": {
+          "project_skill_absent": true,
+          "plugin_skill_absent": true,
+          "mcp_tool_absent": true,
+          "mcp_not_started_again": true,
+          "project_rule_preserved": true
+        },
+        "resumed": {
+          "same_native_id": true,
+          "project_skill_absent": true,
+          "plugin_absent": true,
+          "mcp_absent": true,
+          "prior_conversation_preserved": true
+        },
+        "positive_init": {
+          "session_id": "bca8b381-6b7f-47bf-860a-6ee84767a2b0",
+          "tools": [
+            "Task",
+            "Bash",
+            "CronCreate",
+            "CronDelete",
+            "CronList",
+            "Edit",
+            "EnterWorktree",
+            "ExitWorktree",
+            "ListAgents",
+            "NotebookEdit",
+            "Read",
+            "ReportFindings",
+            "ScheduleWakeup",
+            "SendMessage",
+            "Skill",
+            "TaskCreate",
+            "TaskGet",
+            "TaskList",
+            "TaskStop",
+            "TaskUpdate",
+            "WebFetch",
+            "WebSearch",
+            "Workflow",
+            "Write",
+            "mcp__v03__v03_ping"
+          ],
+          "mcp_servers": [
+            {
+              "name": "v03",
+              "status": "connected",
+              "source": "dynamic"
+            }
+          ],
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "claude_code_version": "2.1.280",
+          "skills": [
+            "v03-project",
+            "deep-research",
+            "v03-plugin:v03-bundled",
+            "dataviz",
+            "update-config",
+            "verify",
+            "debug",
+            "code-review",
+            "simplify",
+            "batch",
+            "fewer-permission-prompts",
+            "doctor",
+            "loop",
+            "claude-api",
+            "workflow-authoring",
+            "run",
+            "run-skill-generator"
+          ],
+          "plugins": [
+            {
+              "name": "v03-plugin",
+              "path": "/tmp/netcap-config-probe-pjtjcyg7/claude-assets/plugin",
+              "source": "v03-plugin@inline",
+              "version": "1.0.0"
+            }
+          ]
+        },
+        "negative_init": {
+          "session_id": "25ec78c8-f7c1-4d08-8a39-ff4175b1f5d1",
+          "tools": [
+            "Task",
+            "Bash",
+            "CronCreate",
+            "CronDelete",
+            "CronList",
+            "Edit",
+            "EnterWorktree",
+            "ExitWorktree",
+            "ListAgents",
+            "NotebookEdit",
+            "Read",
+            "ReportFindings",
+            "ScheduleWakeup",
+            "SendMessage",
+            "Skill",
+            "TaskCreate",
+            "TaskGet",
+            "TaskList",
+            "TaskStop",
+            "TaskUpdate",
+            "WebFetch",
+            "WebSearch",
+            "Workflow",
+            "Write"
+          ],
+          "mcp_servers": [],
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "claude_code_version": "2.1.280",
+          "skills": [
+            "deep-research",
+            "dataviz",
+            "update-config",
+            "verify",
+            "debug",
+            "code-review",
+            "simplify",
+            "batch",
+            "fewer-permission-prompts",
+            "doctor",
+            "loop",
+            "claude-api",
+            "workflow-authoring",
+            "run",
+            "run-skill-generator"
+          ],
+          "plugins": []
+        },
+        "resumed_init": {
+          "session_id": "bca8b381-6b7f-47bf-860a-6ee84767a2b0",
+          "tools": [
+            "Task",
+            "Bash",
+            "CronCreate",
+            "CronDelete",
+            "CronList",
+            "Edit",
+            "EnterWorktree",
+            "ExitWorktree",
+            "ListAgents",
+            "NotebookEdit",
+            "Read",
+            "ReportFindings",
+            "ScheduleWakeup",
+            "SendMessage",
+            "Skill",
+            "TaskCreate",
+            "TaskGet",
+            "TaskList",
+            "TaskStop",
+            "TaskUpdate",
+            "WebFetch",
+            "WebSearch",
+            "Workflow",
+            "Write"
+          ],
+          "mcp_servers": [],
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "claude_code_version": "2.1.280",
+          "skills": [
+            "deep-research",
+            "dataviz",
+            "update-config",
+            "verify",
+            "debug",
+            "code-review",
+            "simplify",
+            "batch",
+            "fewer-permission-prompts",
+            "doctor",
+            "loop",
+            "claude-api",
+            "workflow-authoring",
+            "run",
+            "run-skill-generator"
+          ],
+          "plugins": []
+        },
+        "scope": "new and completed-session resume; local plugin/stdio MCP; visibility and initialization, not model invocation"
+      }
+    },
+    "codex-assets": {
+      "execution": "completed",
+      "expectations_met": true,
+      "observations": {
+        "enabled": {
+          "shared_skill": true,
+          "mcp_initialized": true,
+          "mcp_tool_listed": true,
+          "project_rule": true,
+          "plugin_skill": true
+        },
+        "excluded": {
+          "shared_skill_absent": true,
+          "plugin_skill_absent": true,
+          "mcp_tool_absent": true,
+          "mcp_not_started_again": true,
+          "project_rule_preserved": true
+        },
+        "reenabled": {
+          "shared_skill": true,
+          "plugin_skill": true
+        },
+        "scope": "three threads in one owned daemon; per-thread overrides; locally installed skill-only CLI plugin"
+      }
+    },
+    "codex-live": {
+      "execution": "completed",
+      "expectations_met": true,
+      "observations": {
+        "enabled": {
+          "observed_same_running_turn": true,
+          "same_thread": true,
+          "two_turns": true,
+          "two_model_requests": true,
+          "authentication_verified": true
+        },
+        "fixture": "/tmp/netcap-console-oqqjqwul",
+        "scope": "two native proxy clients sharing one prearranged daemon; no independent foreground TUI adoption or ownership arbiter"
+      }
+    }
+  },
+  "claude_background": {
+    "scope": "native --bg then TTY attach; no platform adapter or foreground adoption",
+    "auth_source": "helper",
+    "same_worker_while_attached": true,
+    "attach_process_alive": true,
+    "model_request_started": true,
+    "original_reply_observed": true,
+    "attach_rendered_session": true,
+    "same_worker_after_detach": true,
+    "authentication_verified": true,
+    "request_paths": [
+      "/v1/messages?beta=true",
+      "/v1/messages?beta=true",
+      "/v1/messages?beta=true",
+      "/v1/messages?beta=true"
+    ],
+    "single_primary_request": true,
+    "auxiliary_request_count": 3,
+    "job": {
+      "id": "bee21be6",
+      "pid": 905612,
+      "state": "working",
+      "kind": "background"
+    },
+    "execution": "completed",
+    "expectations_met": true,
+    "owned_supervisor_cleanup_exit": 0
+  },
+  "negative_background_auth": {
+    "settings": {
+      "source": "/tmp/netcap-claude-attach-8slyb_wo/result.json",
+      "source_sha256": "ba140966065326af47d4477838c4d79bcf425dd8288913d9a5b31d92b1a84cad",
+      "result": {
+        "scope": "native --bg then TTY attach; no platform adapter or foreground adoption",
+        "same_worker_while_attached": true,
+        "attach_process_alive": true,
+        "model_request_started": false,
+        "original_reply_observed": false,
+        "attach_rendered_session": true,
+        "same_worker_after_detach": true,
+        "authentication_verified": false,
+        "primary_requests": 0,
+        "job": {
+          "id": "b925d4a5",
+          "pid": 893121,
+          "state": "blocked",
+          "kind": "background"
+        },
+        "execution": "completed",
+        "owned_supervisor_cleanup_exit": 0
+      }
+    },
+    "process": {
+      "source": "/tmp/netcap-claude-attach-m4f8lnmv/result.json",
+      "source_sha256": "9de9d7fb7e6888b18fb6e0b0da83d7835506fea6b85576ca4154e90b3a562428",
+      "result": {
+        "scope": "native --bg then TTY attach; no platform adapter or foreground adoption",
+        "auth_source": "process",
+        "same_worker_while_attached": true,
+        "attach_process_alive": true,
+        "model_request_started": false,
+        "original_reply_observed": false,
+        "attach_rendered_session": true,
+        "same_worker_after_detach": true,
+        "authentication_verified": false,
+        "primary_requests": 0,
+        "job": {
+          "id": "9ceb5d88",
+          "pid": 894307,
+          "state": "blocked",
+          "kind": "background"
+        },
+        "execution": "completed",
+        "expectations_met": false,
+        "owned_supervisor_cleanup_exit": 0
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "path": "/tmp/netcap-config-probe-pjtjcyg7/results.json",
+      "sha256": "2b070b1c50d2496139fd68606b04eecaa3247390218940d56daf32622a15c041"
+    },
+    {
+      "path": "/tmp/netcap-config-probe-pjtjcyg7/versions.json",
+      "sha256": "c7a52fcdb8b88a7087753161401316398cd43ac7a1ad1d723559e866d1851b04"
+    },
+    {
+      "path": "/tmp/netcap-claude-attach-lzf6djm5/result.json",
+      "sha256": "7cf0a881d29d09883277f48069b23317e2ce39e792f71432664ccd6cea36d7f8"
+    },
+    {
+      "path": "/tmp/netcap-claude-attach-lzf6djm5/versions.json",
+      "sha256": "57a2ffab1bee158802367ce8a0600337fedb9b127314ad00879b066c314fe3c7"
+    },
+    {
+      "path": "tests/execution_config_probe.py",
+      "sha256": "0f7a58bee8e303bde3d1a96a76201b96d2abf9d41f87f90cd5dd6ab46967a011"
+    },
+    {
+      "path": "tests/claude_attach_probe.py",
+      "sha256": "b468e941e5dc73e5bed377ab3c0c41b7148d0abd5f2fd94a9ad6d2726380b68e"
+    },
+    {
+      "path": "/tmp/netcap-v03-4znpkw3j/sources/claude-agent-view.html",
+      "sha256": "783be4d4d800479f2d373a67a6e8a6fcd5be03fc6c6bbf06aba19988dbaba1eb"
+    },
+    {
+      "path": "/tmp/netcap-v03-4znpkw3j/sources/codex-plugins.html",
+      "sha256": "88c487ea0c04ea0c5dd11dd9e3d1252e74a92016eb76ddf0edcd87e9223914de"
+    },
+    {
+      "path": "/tmp/netcap-v03-4znpkw3j/sources/config-schema.json",
+      "sha256": "eda7251b7e46e0b9d0f3d8eef5dab451e11a55d723e2b802e152b7208045836a"
+    },
+    {
+      "path": "/tmp/netcap-v03-4znpkw3j/sources/plugin-packaging.html",
+      "sha256": "985f228b27ac04872c19e13ed9b2ba5bf93e8d56b8a35b91775f9b447fb522d0"
+    },
+    {
+      "path": "/tmp/netcap-v03-4znpkw3j/sources/urls.json",
+      "sha256": "e1337558a9ee24e91080e3ea5fd7c4f2f52030add07af381fc5f9d930fede028"
+    },
+    {
+      "path": "/tmp/netcap-v03-4znpkw3j/sources/codex-skills.html",
+      "sha256": "a3df2cce7e599ac521302678e8e35820909ef857672add14278067f4950f0488"
+    },
+    {
+      "path": "/tmp/netcap-v03-4znpkw3j/sources/codex-config.html",
+      "sha256": "d07a3dc40e3b685780818136a71204b3a12fce5819c28946f2063d7e2ee0e454"
+    },
+    {
+      "path": "/tmp/netcap-v03-4znpkw3j/sources/codex-build-plugins.html",
+      "sha256": "b739e8e74af2c7bbe2950a825564d4024b06783db7bb0b8449df76d6b03521e0"
+    }
+  ],
+  "cleanup": {
+    "remaining_owned_cli_or_helper_pids": [],
+    "supervisor_stop_exit": 0
+  }
+}

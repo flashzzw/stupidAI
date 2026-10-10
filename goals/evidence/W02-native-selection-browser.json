@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-30",
+  "scope": "owned production Web console, real Codex, local model and stdio MCP; per-session selection",
+  "fixture_root": "/tmp/netcap-console-qrkqgptq",
+  "result": {
+    "checks": {
+      "enabled_defaults_to_inherit": true,
+      "enabled_reference_unchecked": true,
+      "enabled_explicit_selection_only": true,
+      "enabled_automatic_reference": true,
+      "enabled_other_servers_inherit": true,
+      "single_call_options_only": true,
+      "enabled_turn_completed": true,
+      "enabled_snapshot_survives_reload": true,
+      "disabled_defaults_to_inherit": true,
+      "disabled_reference_unchecked": true,
+      "disabled_explicit_selection_only": true,
+      "disabled_automatic_reference": true,
+      "disabled_other_servers_inherit": true,
+      "disabled_turn_completed": true,
+      "disabled_snapshot_survives_reload": true,
+      "layout_1440": true,
+      "layout_768": true,
+      "no_javascript_errors": true
+    },
+    "sessions": {
+      "enabled": "629eb24b-2b00-4648-918e-4ade7dda8233",
+      "disabled": "8c300b35-7158-4863-938d-038dcb91f06a"
+    },
+    "errors": [],
+    "expectations_met": true
+  },
+  "script": "tests/native_mcp_selection_browser.js",
+  "screenshots": [
+    "w02-native-approval.png",
+    "w02-native-1440.png",
+    "w02-native-768.png"
+  ],
+  "screenshots_archive_root": "/tmp/netcap-w02-native-select-yz2z25yt",
+  "notes": [
+    "Fresh unauthenticated page returns expected 401.",
+    "Earlier ad hoc browser harness used a nonpersistent global ID and queried an undefined session; corrected to assert a real snapshot ID. Full saved browser script passed with no JavaScript errors."
+  ],
+  "screenshot_sha256": {
+    "w02-native-approval.png": "f8f1ba5c95bccc9811003255640e7156aba1049100d79654ead41e66e7158e5d",
+    "w02-native-1440.png": "a6bcf36f42579e4a5bf331e0cc8533cb364ff696ae3e6395ac97a15432ad0b45",
+    "w02-native-768.png": "978f3a21ea843cdd24575592001c69ae8a88817b84340e13b8e60eb07ffeac35"
+  }
+}

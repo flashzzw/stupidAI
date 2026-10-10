@@ -1,0 +1,75 @@
+// Current real Handler policy responses; source-only and disconnect are UI fixtures.
+async page => {
+  const fixture=__FIXTURE__,assets=__ASSETS__,output=__OUTPUT__,checks={},requests=[],errors=[];
+  const sid=fixture.results.session_id,base='/api/sessions/'+sid,sourceKey=fixture.results.catalog.entries[0].source_key;
+  let phase='singular',fail=false;
+  const check=(name,ok)=>{checks[name]=!!ok;if(!ok)throw Error(name);};
+  const sourceReport=()=>{
+    const value=JSON.parse(JSON.stringify(fixture.results['policy_read_'+(phase==='source-only'?'platform-command':phase)]));
+    if(phase==='source-only')value.policy_helpers_present=false;
+    return value;
+  };
+  page.setDefaultTimeout(6000);await page.unrouteAll({behavior:'ignoreErrors'});page.on('pageerror',e=>errors.push(e.message));
+  await page.addInitScript(id=>{
+    sessionStorage.clear();sessionStorage.setItem('netcap.selected.v1',id);
+    window.EventSource=class{constructor(){window.policyEvents=this;setTimeout(()=>this.onopen?.(),0);}addEventListener(){}close(){}};
+  },sid);
+  await page.route('**/*',async route=>{
+    const r=route.request(),path=r.url().replace(/^https?:\/\/[^/]+/,'').split('?')[0];
+    requests.push({path,method:r.method(),body:r.postData()});
+    if(path==='/favicon.ico'||path==='/favicon.svg')return route.fulfill({status:204});
+    if(path===base+'/plugins/installed')return route.fulfill({json:fixture.results.catalog});
+    if(path===base+'/plugins/startup-settings')return fail?route.fulfill({status:409,json:{error:'读取期间会话绑定已变化，请重新读取'}}):route.fulfill({json:sourceReport()});
+    if(path===base+'/plugins/settings-preview')return route.fulfill({json:fixture.results['policy_preview_'+phase]});
+    if(fixture.responses[path])return route.fulfill({json:fixture.responses[path]});
+    if(assets[path])return route.fulfill({path:assets[path],contentType:path.endsWith('.js')?'application/javascript':path.endsWith('.css')?'text/css':'text/html'});
+    return route.fulfill({status:409,body:'No execution in policy-source replay'});
+  });
+  await page.setViewportSize({width:1440,height:1050});await page.goto('http://127.0.0.1:9463/');
+  await page.locator('.execution-snapshot>summary').click();
+  await page.getByText('Claude 已安装插件登记',{exact:true}).click();
+  const panel=page.locator('details.startup-settings');await panel.locator(':scope>summary').click();
+  check('no_automatic_source_or_preview',!requests.some(r=>r.path.endsWith('/plugins/startup-settings')||r.path.endsWith('/plugins/settings-preview')));
+  const sample=async mode=>{phase=mode;await panel.getByRole('button',{name:'读取设置来源',exact:true}).click();await panel.getByRole('status').waitFor();return panel.innerText();};
+  let content=await sample('singular');
+  check('existing_singular_warning_preserved',content.includes('来源声明了策略辅助程序')&&!content.includes('按平台选择的策略辅助配置'));
+  content=await sample('platform-command');
+  check('read_completion_distinct_from_admission',content.includes('本次来源读取完成；完整启动配置仍待核对。')&&content.includes('设置校验与插件设置预览暂不可用'));
+  check('platform_declaration_and_unevaluated_state',content.includes('policyHelpers')&&content.includes('本次没有执行程序或应用备用策略'));
+  await panel.getByText('预解析报告的来源层',{exact:true}).click();
+  content=await panel.innerText();
+  check('managed_source_and_hash_visible',content.includes('受管设置 · file')&&fixture.results['policy_read_platform-command'].sources.filter(s=>s.source==='managed').every(s=>(!s.path||content.includes(s.path))&&content.includes(s.settings_sha256)));
+  const warning=panel.getByText('来源声明了按平台选择的策略辅助配置',{exact:false});
+  await warning.scrollIntoViewIfNeeded();await page.screenshot({path:output+'/policy-source-1440.png',fullPage:true});
+  await page.getByRole('button',{name:'读取安装登记',exact:true}).click();
+  await page.getByText('支持范围内的登记采样完成 · 1 条安装记录',{exact:true}).waitFor();
+  const preview=page.locator('.snapshot-asset>.startup-settings');
+  await preview.getByRole('button',{name:sourceKey+'：核对排除设置',exact:true}).click();await preview.getByText('核对时间：',{exact:false}).waitFor();
+  const rejected=await preview.innerText();
+  check('real_rejection_visible',rejected.includes('预览未完成，请查看诊断。')&&rejected.includes('策略辅助程序'));
+  check('rejection_precedes_file_creation',rejected.includes('未生成临时设置文件')&&!rejected.includes('原生观察值：'));
+  check('formal_selection_gap_preserved',rejected.includes('正式启停尚未开放'));
+  content=await sample('platform-static');
+  check('static_policy_not_claimed_applied',content.includes('没有执行程序或应用备用策略')&&content.includes('最终策略仍未知'));
+  content=await sample('platform-other');
+  check('other_platform_not_silently_ignored',content.includes('按平台选择的策略辅助配置'));
+  content=await sample('source-only');
+  check('source_declaration_survives_effective_absence',content.includes('按平台选择的策略辅助配置'));
+  check('no_private_values_or_helper_body',!content.includes('PRIVATE_PREVIEW_VALUE')&&!content.includes('unexpected policy execution')&&!content.includes('owned-static-policy'));
+  check('remote_and_permission_limits_visible',content.includes('未获取最新服务端策略')&&content.includes('不能据此确认完整权限或允许已安装插件启停'));
+  fail=true;await panel.getByRole('button',{name:'读取设置来源',exact:true}).click();await panel.getByRole('alert').waitFor();
+  check('failed_read_clears_old_warning',await panel.getByRole('status').count()===0&&!(await panel.innerText()).includes('按平台选择的策略辅助配置'));
+  fail=false;await sample('platform-command');
+  await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'详情',exact:true}).click();await warning.scrollIntoViewIfNeeded();
+  check('mobile_no_horizontal_overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.screenshot({path:output+'/policy-source-390.png',fullPage:true});
+  await page.evaluate(()=>window.policyEvents.onerror?.(new Event('error')));
+  await page.getByText('连接断开 · 数据已过期',{exact:true}).waitFor();
+  await page.getByText('Claude 已安装插件登记',{exact:true}).click();await page.locator('details.startup-settings>summary').click();
+  check('disconnected_read_disabled',await page.locator('details.startup-settings').getByRole('button',{name:'读取设置来源',exact:true}).isDisabled());
+  check('only_bound_reads',requests.filter(r=>r.path===base+'/plugins/startup-settings').every(r=>r.method==='POST'&&r.body==='{}'));
+  check('only_bound_preview',requests.filter(r=>r.path===base+'/plugins/settings-preview').every(r=>{const b=JSON.parse(r.body);return r.method==='POST'&&b.source_key===sourceKey&&b.source_version===fixture.results.catalog.source_version&&b.mode==='disabled';}));
+  check('no_execution_command',!requests.some(r=>r.path==='/api/commands'));
+  check('no_browser_errors',errors.length===0);
+  return {checks,requests,errors,passed:Object.values(checks).every(Boolean),scope:'real Application/Handler policy source and rejected preview; source-only warning and disconnection are controlled UI conditions'};
+}

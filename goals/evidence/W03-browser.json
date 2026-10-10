@@ -1,0 +1,157 @@
+{
+  "results": [
+    {
+      "case": "Windows path rejected",
+      "pass": true
+    },
+    {
+      "case": "Missing authentication rejected",
+      "pass": true
+    },
+    {
+      "case": "Empty goal rejected",
+      "pass": true
+    },
+    {
+      "case": "Capability disclosure stays open",
+      "pass": true
+    },
+    {
+      "case": "Duplicate submission keeps one session",
+      "pass": true
+    },
+    {
+      "case": "Current evidence permits delivery",
+      "pass": true
+    },
+    {
+      "case": "Stale evidence rejected",
+      "pass": true
+    },
+    {
+      "case": "In-flight handoff blocked",
+      "pass": true
+    },
+    {
+      "case": "Draft blocks handoff",
+      "pass": true
+    },
+    {
+      "case": "Disconnect removes input permission",
+      "pass": true
+    },
+    {
+      "case": "Reconcile restores original input",
+      "pass": true
+    },
+    {
+      "case": "Unverified foreground blocked",
+      "pass": true
+    },
+    {
+      "case": "In-flight snapshot unchanged",
+      "pass": true
+    },
+    {
+      "case": "Idle snapshot advances",
+      "pass": true
+    },
+    {
+      "case": "Provider change is not resume",
+      "pass": true
+    },
+    {
+      "case": "Prior identity retained",
+      "pass": true
+    },
+    {
+      "case": "Keyboard tab navigation",
+      "pass": true
+    }
+  ],
+  "sizes": [
+    {
+      "width": 1440,
+      "scene": 0,
+      "noOverflow": true
+    },
+    {
+      "width": 1440,
+      "scene": 1,
+      "noOverflow": true
+    },
+    {
+      "width": 1440,
+      "scene": 2,
+      "noOverflow": true
+    },
+    {
+      "width": 1440,
+      "scene": 3,
+      "noOverflow": true
+    },
+    {
+      "width": 1440,
+      "scene": 4,
+      "noOverflow": true
+    },
+    {
+      "width": 768,
+      "scene": 0,
+      "noOverflow": true
+    },
+    {
+      "width": 768,
+      "scene": 1,
+      "noOverflow": true
+    },
+    {
+      "width": 768,
+      "scene": 2,
+      "noOverflow": true
+    },
+    {
+      "width": 768,
+      "scene": 3,
+      "noOverflow": true
+    },
+    {
+      "width": 768,
+      "scene": 4,
+      "noOverflow": true
+    },
+    {
+      "width": 390,
+      "scene": 0,
+      "noOverflow": true
+    },
+    {
+      "width": 390,
+      "scene": 1,
+      "noOverflow": true
+    },
+    {
+      "width": 390,
+      "scene": 2,
+      "noOverflow": true
+    },
+    {
+      "width": 390,
+      "scene": 3,
+      "noOverflow": true
+    },
+    {
+      "width": 390,
+      "scene": 4,
+      "noOverflow": true
+    }
+  ],
+  "errors": [],
+  "scope": "Browser interactions on the standalone W03 mock prototype; no production or native CLI acceptance.",
+  "date": "2026-09-30",
+  "screenshots": [
+    "W03-desktop.png",
+    "W03-mobile.png"
+  ],
+  "prototype_sha256": "244df5dd00582349cb59da3849eb31fe0e3ec8a55a6d2da2e1021afb445550a0"
+}

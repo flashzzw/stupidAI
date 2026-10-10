@@ -1,0 +1,39 @@
+{
+  "date": "2026-09-29",
+  "cli": "1.18.32",
+  "normal_fixture": "/tmp/netcap-console-bj67lnj_",
+  "recovery_fixture": "/tmp/netcap-console-8lduhata",
+  "streamed_turns": 2,
+  "messages_after_reload": 4,
+  "approval": [
+    "allow",
+    "deny"
+  ],
+  "questions": [
+    "single",
+    "multiple"
+  ],
+  "interrupt": "paused and verified terminal",
+  "offline": "writes disabled; snapshot restored on reconnect",
+  "viewports": [
+    1440,
+    768
+  ],
+  "overflow": false,
+  "wrong_association": "rejected",
+  "correct_association": "original native creation verified",
+  "uncertain_send": "real accepted prompt with lost receipt and partial history",
+  "takeover": "retains Unknown and survives reload",
+  "reconcile": "full original history restores completion",
+  "provider_requests_for_recovery": 1,
+  "screenshots": [
+    ".dev/logs/T05-desktop-final.png",
+    ".dev/logs/T05-tablet-final.png",
+    ".dev/logs/T05-approve-pending.png",
+    ".dev/logs/T05-decline-pending.png",
+    ".dev/logs/T05-question-pending.png",
+    ".dev/logs/T05-question-multiple.png",
+    ".dev/logs/T05-associated.png",
+    ".dev/logs/T05-unknown-takeover.png"
+  ]
+}

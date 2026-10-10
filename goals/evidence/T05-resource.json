@@ -1,0 +1,17 @@
+{
+  "fixture": "/tmp/netcap-console-79e6xfoe",
+  "registered_sessions": 10,
+  "go_rss_kib": 30432,
+  "server_rss_kib": [
+    567084,
+    549204,
+    569948,
+    546352,
+    555208,
+    569876,
+    564988,
+    558844,
+    540368,
+    558072
+  ]
+}

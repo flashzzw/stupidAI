@@ -1,0 +1,300 @@
+{
+  "date": "2026-09-30",
+  "scope": "W01/W02 native boundary probes; isolated temporary profiles and synthetic local providers; production unchanged",
+  "command": "python3 tests/workbench_boundary_probe.py",
+  "exit_code": 1,
+  "raw_root": "/tmp/netcap-boundary-gon2lzie",
+  "versions": {
+    "codex": {
+      "version": "codex-cli 0.157.1",
+      "path": "/home/zzw/.codex/packages/standalone/releases/0.157.1-x86_64-unknown-linux-musl/bin/codex"
+    },
+    "server": {
+      "version": "codex-cli 0.158.0",
+      "path": "/home/zzw/.codex/packages/app-server-daemon/releases/0.158.0-x86_64-unknown-linux-musl/bin/codex"
+    },
+    "claude": {
+      "version": "2.1.280 (Claude Code)",
+      "path": "/home/zzw/.local/share/claude/versions/2.1.280"
+    }
+  },
+  "results": {
+    "codex-tui": {
+      "execution": "completed",
+      "expectations_met": true,
+      "observations": {
+        "checks": {
+          "observed_TUI_turn_in_flight": true,
+          "draft_visible_in_terminal": true,
+          "draft_not_in_native_history": true,
+          "draft_did_not_send_primary_request": true,
+          "same_thread_three_turns": true,
+          "exactly_three_primary_model_requests": true,
+          "all_markers_in_original_history": true,
+          "bound_credentials": true
+        },
+        "fixture": "/tmp/netcap-console-q5d2t47k",
+        "scope": "real TUI on pre-shared backend; serial proxy/TUI handoff; draft visibility; no enforced platform arbitration",
+        "native_id": "01a0f133-1b8d-77b2-bc8d-0dd246d0857d",
+        "primary_request_count": 3,
+        "auxiliary_request_count": 2
+      }
+    },
+    "codex-standalone": {
+      "execution": "completed",
+      "expectations_met": true,
+      "observations": {
+        "checks": {
+          "foreground_process_alive": true,
+          "local_model_request_authenticated": true,
+          "native_identity_observed": true,
+          "no_shared_socket_in_fixture": true
+        },
+        "fixture": "/tmp/netcap-console-cz9oihvc",
+        "scope": "explicit --no-daemon foreground; discovery observation only, no claim of impossibility",
+        "live_adoption": "unverified: no shared control endpoint discovered in this fixture",
+        "discovered_sockets": [],
+        "native_id": "01a0f133-3c64-7bd1-a43a-0c3f6c73f58a"
+      }
+    },
+    "claude-foreground": {
+      "execution": "completed",
+      "expectations_met": false,
+      "observations": {
+        "checks": {
+          "independent_foreground_has_no_background_worker": true,
+          "unsent_draft_blocks_background_switch": true,
+          "draft_not_sent_to_model": true,
+          "conversion_uses_new_worker": true,
+          "same_native_id_after_conversion": false,
+          "original_history_in_followup": true,
+          "bound_credentials": true,
+          "owned_supervisor_stopped": true
+        },
+        "requested_native_id": null,
+        "scope": "independent foreground, completed turn, native /background conversion then TTY attach; no in-flight tools",
+        "native_id": "a5df5623-c87b-497d-9b2f-492b5328d8d9",
+        "foreground_roster": [
+          {
+            "pid": 1009470,
+            "cwd": "/tmp/netcap-boundary-gon2lzie/claude-foreground/work",
+            "kind": "interactive",
+            "startedAt": 1790753068908,
+            "sessionId": "a5df5623-c87b-497d-9b2f-492b5328d8d9",
+            "name": "work-89",
+            "status": "idle"
+          }
+        ],
+        "foreground_pid": 1009470,
+        "background_job": {
+          "id": "588b3724",
+          "sessionId": "588b3724-a03f-4706-b798-03ddeff44b24",
+          "pid": 1009862,
+          "status": null,
+          "state": "blocked"
+        },
+        "roster_identity_differs_from_original": true,
+        "followup_native_id": "588b3724-a03f-4706-b798-03ddeff44b24"
+      }
+    },
+    "claude-foreground-explicit-id": {
+      "execution": "completed",
+      "expectations_met": false,
+      "observations": {
+        "checks": {
+          "independent_foreground_has_no_background_worker": true,
+          "unsent_draft_blocks_background_switch": true,
+          "draft_not_sent_to_model": true,
+          "conversion_uses_new_worker": true,
+          "same_native_id_after_conversion": false,
+          "original_history_in_followup": true,
+          "bound_credentials": true,
+          "owned_supervisor_stopped": true
+        },
+        "requested_native_id": "dde30c99-b9d8-4a32-aa20-eaf3eef7657f",
+        "scope": "independent foreground, completed turn, native /background conversion then TTY attach; no in-flight tools",
+        "native_id": "dde30c99-b9d8-4a32-aa20-eaf3eef7657f",
+        "foreground_roster": [
+          {
+            "pid": 1010113,
+            "cwd": "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/work",
+            "kind": "interactive",
+            "startedAt": 1790753115470,
+            "sessionId": "dde30c99-b9d8-4a32-aa20-eaf3eef7657f",
+            "name": "work-9d",
+            "status": "idle"
+          }
+        ],
+        "foreground_pid": 1010113,
+        "background_job": {
+          "id": "7da31f83",
+          "sessionId": "7da31f83-05f8-4fb2-94f7-f35241aa264d",
+          "pid": 1010269,
+          "status": "idle",
+          "state": "blocked"
+        },
+        "roster_identity_differs_from_original": true,
+        "followup_native_id": "7da31f83-05f8-4fb2-94f7-f35241aa264d"
+      }
+    },
+    "claude-supervisors": {
+      "execution": "completed",
+      "expectations_met": true,
+      "observations": {
+        "checks": {
+          "both_main_requests_in_flight": true,
+          "distinct_workers_and_jobs": true,
+          "rosters_do_not_mix": true,
+          "A_same_worker_attached": true,
+          "A_same_worker_reattached": true,
+          "B_same_worker_attached": true,
+          "B_same_worker_reattached": true,
+          "stop_A_preserves_B_worker": true,
+          "A_resumes_same_id_new_worker": true,
+          "A_history_preserved": true,
+          "all_requests_use_bound_credentials": true,
+          "no_cross_profile_markers": true,
+          "owned_supervisors_stopped": true
+        },
+        "scope": "two isolated native supervisors; serial TTY detach/reattach and stopped-session recovery",
+        "jobs": [
+          {
+            "id": "bc5182df",
+            "sessionId": "bc5182df-b364-431a-9849-2b928eb9d35f",
+            "pid": 1010494,
+            "status": "busy",
+            "state": "working"
+          },
+          {
+            "id": "21babba3",
+            "sessionId": "21babba3-de87-4a31-92cd-992f9eb7cbd2",
+            "pid": 1010592,
+            "status": "busy",
+            "state": "working"
+          }
+        ],
+        "resumed_job": {
+          "id": "bc5182df",
+          "sessionId": "bc5182df-b364-431a-9849-2b928eb9d35f",
+          "pid": 1011053,
+          "status": "idle",
+          "state": "working"
+        },
+        "request_counts": {
+          "A": 7,
+          "B": 4
+        }
+      }
+    },
+    "same-id": {
+      "execution": "completed",
+      "expectations_met": true,
+      "observations": {
+        "native_id": "175bd711-9a64-465a-a340-8126b8b1f8d1",
+        "checks": {
+          "same_id_created_in_both_namespaces": true,
+          "both_resume_original_id": true,
+          "alias_is_same_state_directory": true,
+          "own_history_preserved": true,
+          "no_cross_profile_history": true,
+          "bound_credentials": true
+        },
+        "scope": "Claude same native ID and cwd in two state namespaces; separate HOME, local providers; no workspace writes",
+        "identities": [
+          {
+            "state_dir": "/tmp/netcap-boundary-gon2lzie/same-id/A/claude",
+            "cwd": "/tmp/netcap-boundary-gon2lzie/same-id/shared-project",
+            "native_id": "175bd711-9a64-465a-a340-8126b8b1f8d1"
+          },
+          {
+            "state_dir": "/tmp/netcap-boundary-gon2lzie/same-id/B/claude",
+            "cwd": "/tmp/netcap-boundary-gon2lzie/same-id/shared-project",
+            "native_id": "175bd711-9a64-465a-a340-8126b8b1f8d1"
+          }
+        ]
+      }
+    }
+  },
+  "summary": {
+    "experiments_completed": 6,
+    "expectations_met": 4,
+    "strict_identity_failures": 2,
+    "note": "codex-standalone passing assertions establish discovery observations only, not live adoption"
+  },
+  "source_sha256": {
+    "tests/workbench_boundary_probe.py": "c7ea6f9687739a56b180840ee0025d5c49595f618942146818da0b3121e54c80",
+    "tests/execution_config_probe.py": "0f7a58bee8e303bde3d1a96a76201b96d2abf9d41f87f90cd5dd6ab46967a011",
+    "tests/runtime/common.py": "586069b82d53d20fa350d90bbc823f7bda155693945630936aed21e03e757cd7",
+    "tests/console_fixture.py": "5a2c1377b2527994eaca74739fadd8d89859f5afb745dda9629f54747ffd6647",
+    "tests/go_cli_smoke.py": "1ea0c2f86aa64dd5fc919593725eda3f664b79cf69eff4355f374730bf84e1e6"
+  },
+  "raw_artifact_sha256": {
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/background-roster.stdout": "8856f11bdb5ecea910fc598f0f7558bc29afbc8098711b9a908d3efee3e2d311",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/cleanup.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/converted-attach.ansi": "870ec381f4a95a034dc6aa634e883483962d78230adead7e0d50c6def08988cd",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/draft-roster.stdout": "fc1c1e62d6be1c991959ff3e0fcc84f4bc704f14b828eeaaa97623ea7bea832a",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/foreground-roster.stdout": "fc1c1e62d6be1c991959ff3e0fcc84f4bc704f14b828eeaaa97623ea7bea832a",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/foreground.ansi": "777032e03dd8d51f10812a75802c0755c2694e5f71358a0eb9c8a41369c99d0e",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/observations.json": "4cfc5aad8b08a2ee112b5868b21e9c0958712482ddc36ac4fde93d9589d0882c",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/provider-A/request-1.json": "d7c58453796af9a6e223b5899ff8c4e83e506453c9eecc5966caf2d128d0fdfa",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/provider-A/request-2.json": "aa33063356c62647233cba06dda9ae6b623096b11123cba71f07f22bbee24366",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/provider-A/request-3.json": "9547f90c7e3dceabc1f798cd6231f34253034506ba3d88fe7cb840e91f5ece04",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/provider-A/request-4.json": "0e95101ee33705b6f0c55d4278b55dac21d625725c205f0f65802d0a9f8940b0",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/provider-A/request-5.json": "8adda4b9b19e0adcfb97c2ddbdf44a00b8df0046463abf958b7f8e75e6029cb6",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/provider-A/request-6.json": "d50f73173909e5b15376916fe7da341c90bad1cb04e2e7e20d65a636f4ce6778",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground/provider.settings.json": "6b368c56fd934a785c4b5c1bbab0f1729fd5acace5ebf20cd0ce850e2dbde4ae",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/background-roster.stdout": "654228ecd3c2060bfe863de7671069ea032022e5632d2950743e779fe8dd6956",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/cleanup.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/converted-attach.ansi": "ef8b313250ded45b037faf8a8e333fa1d0ad913999f9efc7c976db590d0601ed",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/draft-roster.stdout": "48a779581c92093f65f9f245f5ce1bef7dfad4d207b0abc35fc4f33673a91e7b",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/foreground-roster.stdout": "48a779581c92093f65f9f245f5ce1bef7dfad4d207b0abc35fc4f33673a91e7b",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/foreground.ansi": "92de71a98d76366764e4b375606fe3ed203072ec9d8e8dfdbbdde0eaee9975da",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/observations.json": "4ae1d901a6f90a64c93647227ade5bc6890b365b7b8225a2f2cd39a1d67fc767",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/provider-A/request-1.json": "7899a915c5972cea5d893186ef755b3d4cb192aceed62c6722b2cd57210c913d",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/provider-A/request-2.json": "9e48e7bd5e33282ce61d713a0f6c33ae434b983cc64a8170f6761dfabff9c981",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/provider-A/request-3.json": "4d6fe666b9a4ec0f9e0dc4e98eb12c49115632639b5d13bf10c262b20fe37a4f",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/provider-A/request-4.json": "95293458ea7e5c8976d75770f032692658cc837bf3ed6fadbf1101830cc807ba",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/provider-A/request-5.json": "7609177c0a92802a8bcab538b8615b2c05caac1f199293107c7663117f8f6427",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/provider-A/request-6.json": "65df0338cbd9ffc233731c3cbfd907a4fba0d8ea34caa72cc5a291f78a57c02b",
+    "/tmp/netcap-boundary-gon2lzie/claude-foreground-explicit-id/provider.settings.json": "75c385c4ac12332c34a65eb75a9fccc262102c5f9e03de641798476e05b92cab",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/A/A-resumed.stdout": "32f0b87223e8fbeedefdb598d76d549ef0fb88a188bcdb72d9a5121770157fb7",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/A/attached.stdout": "a9e784d833186da01ffe8326d1e730bd5bc5b25128ce81f97058d1017fb01c39",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/A/before.stdout": "a9e784d833186da01ffe8326d1e730bd5bc5b25128ce81f97058d1017fb01c39",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/A/cleanup.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/A/launch.stdout": "e2c1bff71f431c206bcc79543e7f68568f4d211e118b865b989ada44a6b3512c",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/A/reattached.stdout": "a9e784d833186da01ffe8326d1e730bd5bc5b25128ce81f97058d1017fb01c39",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/A/resume-A.stdout": "e2c1bff71f431c206bcc79543e7f68568f4d211e118b865b989ada44a6b3512c",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/A/roster.stdout": "a9e784d833186da01ffe8326d1e730bd5bc5b25128ce81f97058d1017fb01c39",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/A/settled.stdout": "60c2b55e7e76e769989ae057587f4b1e441c4fd6458ab0b4f952bac8c234d4c7",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/A/stop-A.stdout": "c817969c38600eb3db1b11de81e7f8f9684cbd0081cbe36c0e3746bbd8626968",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/B/B-after-A-stop.stdout": "8a9335887614f1b3d92c6ce157855d1145751e06e95c36e765504cb4f870ac05",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/B/attached.stdout": "133430585c925690addf292b67ac55925666a0f1c4a5d96c94f1cd90fe0c4dd1",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/B/before.stdout": "133430585c925690addf292b67ac55925666a0f1c4a5d96c94f1cd90fe0c4dd1",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/B/cleanup.stdout": "a5427ce697aa2613f7c1f85b005d37509965b56318ad4cc8e8d2f2888dc9cb89",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/B/launch.stdout": "fde9b0e6d95df82d946471454cc3b38d2eeb942ed3b6ff150989f49baee2ae8a",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/B/reattached.stdout": "133430585c925690addf292b67ac55925666a0f1c4a5d96c94f1cd90fe0c4dd1",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/B/roster.stdout": "133430585c925690addf292b67ac55925666a0f1c4a5d96c94f1cd90fe0c4dd1",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/B/settled.stdout": "8a9335887614f1b3d92c6ce157855d1145751e06e95c36e765504cb4f870ac05",
+    "/tmp/netcap-boundary-gon2lzie/claude-supervisors/observations.json": "eed6ec4affe74c9bcac61e3f4ba3a8b5e47e66bfc13b15ad63679d1fed735527",
+    "/tmp/netcap-boundary-gon2lzie/codex-standalone/observations.json": "46adfec06f284e8671ce886fb28f4cc2c681b0458637ecde19749ca1503b0317",
+    "/tmp/netcap-boundary-gon2lzie/codex-standalone/standalone.ansi": "7d9666d4a26579e695fbd6d58f6e68de21bb39e8c92cdafcb21651408055f5d9",
+    "/tmp/netcap-boundary-gon2lzie/codex-tui/history.json": "49695d20783503b436b45861e8ee73ff6524e606d0ea39625ffe4ebfd28f5dbf",
+    "/tmp/netcap-boundary-gon2lzie/codex-tui/loaded-threads.json": "2696667bfbfa7df8f5ea8b7bb87b4ea2078faa40251201dfe10ff4a01f46515e",
+    "/tmp/netcap-boundary-gon2lzie/codex-tui/observations.json": "af8a4f56830dff8138cb887639f337b6862f4401e04d91ebf3dfffd889e3d1d2",
+    "/tmp/netcap-boundary-gon2lzie/codex-tui/resumed-tui.ansi": "7a150180ff25534138f6e7832126421d42746fa037ee22b1830e54cb40ba1061",
+    "/tmp/netcap-boundary-gon2lzie/codex-tui/tui.ansi": "ab103a49daa644e5373f4f9924de8488e93e82795c2ce7ac2b2805a38d848268",
+    "/tmp/netcap-boundary-gon2lzie/results.json": "3470f00c78a63d0215bc5bace274d36c24e0f96e4f71b993fe42fe9716a1b988",
+    "/tmp/netcap-boundary-gon2lzie/same-id/observations.json": "bfa1023c4d9997b4351f15316509d070ba14d799d338c201aee008e6fe90417d",
+    "/tmp/netcap-boundary-gon2lzie/versions.json": "c7a52fcdb8b88a7087753161401316398cd43ac7a1ad1d723559e866d1851b04",
+    "/tmp/netcap-console-cz9oihvc/provider-A/request-1.json": "a126c624a71d8afffe9607698fa2036f558c0d167f105a1ea30569a980cedb84",
+    "/tmp/netcap-console-q5d2t47k/provider-A/request-1.json": "16072d19c27eb494d65aad7ac8ffd821be62dd70a6fba599668ec005c8f12f39",
+    "/tmp/netcap-console-q5d2t47k/provider-A/request-2.json": "a54d4dd84162dc63283903983f8f06a1ec44ab7d5e8d37f0f9dbdfb3d8551b13",
+    "/tmp/netcap-console-q5d2t47k/provider-A/request-3.json": "0eb208cb54f51bf862805938442ed9b63e24c4ee8cf29605f13bcd6f43235eb5",
+    "/tmp/netcap-console-q5d2t47k/provider-A/request-4.json": "f6adc1dd145d2dcee8640b9b4ab033b7c760a90b83272646b5d82a70ebe981ef",
+    "/tmp/netcap-console-q5d2t47k/provider-A/request-5.json": "3faf3b52093dc9760a5abd467d2411c6359ce93281c7dab0169c027cfb4e4137"
+  },
+  "official_sources": {
+    "https://learn.chatgpt.com/docs/app-server": "afe7207cec3aeeae42d0fca1639617521304a92c5fb22de0d446c55903d24e10",
+    "https://code.claude.com/docs/en/agent-view.md": "783be4d4d800479f2d373a67a6e8a6fcd5be03fc6c6bbf06aba19988dbaba1eb"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "date": "2026-09-29",
+  "fixture": "/tmp/netcap-console-haxm57ux",
+  "fixture_available_after_interruption": false,
+  "projects": 2,
+  "initial_page": 50,
+  "older_messages_loaded": 54,
+  "filters": [
+    "agent",
+    "search",
+    "archive"
+  ],
+  "archive": "local visibility restored; persisted across controller restart",
+  "reload": "latest page",
+  "workspace": "metadata only",
+  "overflow": false,
+  "viewports": [
+    1440,
+    768
+  ],
+  "scripts": [
+    "tests/console_listing_smoke.py",
+    "tests/console_listing_browser.js"
+  ]
+}

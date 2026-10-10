@@ -1,0 +1,11 @@
+{
+  "agents": [
+    "codex",
+    "claude",
+    "opencode"
+  ],
+  "doctor": "read-only, zero native servers/model calls/state writes",
+  "route_revision": "new identity",
+  "old_session": "preserved and send rejected",
+  "provider_calls_after_drift": 0
+}

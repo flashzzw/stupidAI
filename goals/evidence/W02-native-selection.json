@@ -1,0 +1,317 @@
+{
+  "date": "2026-09-30",
+  "scope": "W02 Codex profile-defined stdio MCP per-thread selection, runtime evidence and native one-call approval; not complete effective configuration",
+  "coverage": "recorded_sources_only",
+  "entries": {
+    "codex-native-selection": {
+      "raw_root": "/tmp/netcap-console-au53pg3g",
+      "result": {
+        "scope": "real Codex, production HTTP, local provider; per-thread stdio MCP selection and one-call native approvals",
+        "checks": {
+          "enabled_verified": true,
+          "enabled_automatically_records_reference": true,
+          "enabled_other_servers_inherit": true,
+          "disabled_verified": true,
+          "disabled_automatically_records_reference": true,
+          "disabled_other_servers_inherit": true,
+          "native_approval_visible_before_tool_executes": true,
+          "approval_retry_is_idempotent": true,
+          "tool_runs_once_with_bound_identity": true,
+          "successful_call_evidence": true,
+          "exact_mcp_result_returns_to_model": true,
+          "late_approval_rejected": true,
+          "allow_is_single_call_not_session_grant": true,
+          "disabled_tool_absent_from_native_exec_registry": true,
+          "enabled_restart_preserves_snapshot_id_and_selection": true,
+          "enabled_restart_native_match": true,
+          "disabled_restart_preserves_snapshot_id_and_selection": true,
+          "disabled_restart_native_match": true,
+          "excluded_and_resumed_turns_do_not_call_tool": true,
+          "denial_prevents_tool_call": true,
+          "denied_call_not_recorded_as_success": true,
+          "unavailable_blocks_send": true,
+          "unavailable_blocks_resume": true,
+          "unavailable_no_model_request": true,
+          "profile_not_modified": true,
+          "snapshot_and_evidence_do_not_copy_mcp_secret": true,
+          "model_auth_matches": true,
+          "no_provider_errors": true
+        },
+        "native_ids": {
+          "enabled": "01a0f195-2898-7691-a882-0e0c6cb1739d",
+          "disabled": "01a0f195-29b3-7a53-abd3-f71a85922eca"
+        },
+        "expectations_met": true
+      },
+      "result_sha256": "bf70e01e3d0a2eb8705c0d6634a0d97c9d5fa416b7d3cbd4ffef3a70317e7eca"
+    },
+    "codex-snapshot-regression": {
+      "raw_root": "/tmp/netcap-console-609mavby",
+      "result": {
+        "backend": "codex",
+        "execution": "completed",
+        "expectations_met": true,
+        "checks": {
+          "snapshot_records_version_and_binding": true,
+          "reference_is_recorded_without_loading_claim": true,
+          "source_content_not_exposed": true,
+          "inspection_has_no_model_side_effect": true,
+          "create_retry_is_idempotent": true,
+          "reference_did_not_implicitly_load_asset": true,
+          "restart_and_registry_update_preserve_snapshot": true,
+          "dependent_script_drift_visible": true,
+          "drift_refuses_send": true,
+          "drift_refuses_resume": true,
+          "drift_did_not_send_model_input": true,
+          "drift_did_not_overwrite_snapshot": true,
+          "original_history_and_identity_preserved": true,
+          "all_operations_reference_original_snapshot": true,
+          "model_credentials_bound": true,
+          "provider_has_no_errors": true
+        },
+        "native_id": "01a0f18c-8cd1-75c2-ab35-105c57bbf3f9",
+        "snapshot": {
+          "id": "4fe3dd86-61cf-4c09-9a25-0db24a7a3f77",
+          "schema_version": 1,
+          "session_id": "d1155b8d-290c-4ec9-a7f5-31881f7fdf71",
+          "created_at": "2026-09-30T09:01:55.203822972Z",
+          "instance": {
+            "id": "codex-local",
+            "kind": "codex",
+            "executable": "/home/zzw/.codex/packages/standalone/releases/0.157.1-x86_64-unknown-linux-musl/bin/codex",
+            "profile": "/tmp/netcap-console-609mavby/codex",
+            "socket": "/tmp/netcap-console-609mavby/codex.sock",
+            "version": "0.157.1/0.158.0",
+            "policy_revision": "m0-1",
+            "env_allow": [
+              "NETCAP_FIXTURE_KEY"
+            ]
+          },
+          "cli_version": "codex-cli 0.157.1",
+          "route": {
+            "id": "route-a",
+            "instance_id": "codex-local",
+            "provider": "fixture",
+            "endpoint": "http://127.0.0.1:46309/v1",
+            "model": "gpt-6-astra",
+            "credential_ref": "env:NETCAP_FIXTURE_KEY",
+            "credential_revision": "1",
+            "config_revision": "1"
+          },
+          "cwd": "/tmp/netcap-console-609mavby/work",
+          "state_namespace": "/tmp/netcap-console-609mavby/codex",
+          "permission": "read_only",
+          "profile_source": {
+            "path": "/tmp/netcap-console-609mavby/codex/config.toml",
+            "resolved_path": "/tmp/netcap-console-609mavby/codex/config.toml",
+            "kind": "file",
+            "sha256": "58a9578767511f2aafdaa19125c96b2b55359807e2296a6890289cf8cf2d3709"
+          },
+          "capability_refs": [
+            {
+              "asset": {
+                "id": "shared-skill",
+                "name": "快照验收 Skill",
+                "kind": "skill",
+                "version": "v1",
+                "source": "/tmp/netcap-console-609mavby/registered-skill",
+                "backends": [
+                  "codex",
+                  "claude"
+                ]
+              },
+              "source": {
+                "path": "/tmp/netcap-console-609mavby/registered-skill",
+                "resolved_path": "/tmp/netcap-console-609mavby/registered-skill",
+                "kind": "directory",
+                "sha256": "8eb11cdbbc5ddac0eea0a6c3d296a3cfc8afce9e0bfee71f678708102edd0d0a"
+              }
+            }
+          ],
+          "coverage": "recorded_sources_only"
+        }
+      },
+      "result_sha256": "c35082064539bdb1ec78cbd467472e3d338f28f1249ab1282a2b575113bbf5fe"
+    },
+    "claude-snapshot-regression": {
+      "raw_root": "/tmp/netcap-console-58gzsl8d",
+      "result": {
+        "backend": "claude",
+        "execution": "completed",
+        "expectations_met": true,
+        "checks": {
+          "snapshot_records_version_and_binding": true,
+          "reference_is_recorded_without_loading_claim": true,
+          "source_content_not_exposed": true,
+          "inspection_has_no_model_side_effect": true,
+          "create_retry_is_idempotent": true,
+          "reference_did_not_implicitly_load_asset": true,
+          "restart_and_registry_update_preserve_snapshot": true,
+          "dependent_script_drift_visible": true,
+          "drift_refuses_send": true,
+          "drift_refuses_resume": true,
+          "drift_did_not_send_model_input": true,
+          "drift_did_not_overwrite_snapshot": true,
+          "original_history_and_identity_preserved": true,
+          "all_operations_reference_original_snapshot": true,
+          "model_credentials_bound": true,
+          "provider_has_no_errors": true
+        },
+        "native_id": "0473a84d-c565-4e97-9746-001bd0c8a53a",
+        "snapshot": {
+          "id": "5e5b2cee-fd74-41d1-87c9-e33b59a13cb9",
+          "schema_version": 1,
+          "session_id": "eb1a552d-5658-4ed8-a390-b9b6da96c848",
+          "created_at": "2026-09-30T09:01:54.895295473Z",
+          "instance": {
+            "id": "claude-local",
+            "kind": "claude",
+            "executable": "/home/zzw/.local/bin/claude",
+            "profile": "/tmp/netcap-console-58gzsl8d/claude",
+            "socket": "",
+            "version": "2.1.280/0.3.280",
+            "policy_revision": "m0-1",
+            "env_allow": [
+              "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+              "DISABLE_AUTOUPDATER",
+              "DISABLE_TELEMETRY",
+              "DISABLE_ERROR_REPORTING"
+            ],
+            "bridge": "/home/zzw/codex-netcap/bridges/claude/dist/main.js",
+            "node_executable": "/home/zzw/.nvm/versions/node/v24.13.0/bin/node"
+          },
+          "cli_version": "2.1.280 (Claude Code)",
+          "route": {
+            "id": "route-a",
+            "instance_id": "claude-local",
+            "provider": "anthropic",
+            "endpoint": "http://127.0.0.1:35561",
+            "model": "claude-sonnet-4-6",
+            "credential_ref": "env:NETCAP_CLAUDE_KEY",
+            "credential_revision": "1",
+            "config_revision": "1"
+          },
+          "cwd": "/tmp/netcap-console-58gzsl8d/work",
+          "state_namespace": "/tmp/netcap-console-58gzsl8d/claude",
+          "permission": "read_only",
+          "profile_source": {
+            "path": "/tmp/netcap-console-58gzsl8d/claude/settings.json",
+            "resolved_path": "/tmp/netcap-console-58gzsl8d/claude/settings.json",
+            "kind": "absent",
+            "optional": true
+          },
+          "capability_refs": [
+            {
+              "asset": {
+                "id": "shared-skill",
+                "name": "快照验收 Skill",
+                "kind": "skill",
+                "version": "v1",
+                "source": "/tmp/netcap-console-58gzsl8d/registered-skill",
+                "backends": [
+                  "codex",
+                  "claude"
+                ]
+              },
+              "source": {
+                "path": "/tmp/netcap-console-58gzsl8d/registered-skill",
+                "resolved_path": "/tmp/netcap-console-58gzsl8d/registered-skill",
+                "kind": "directory",
+                "sha256": "8eb11cdbbc5ddac0eea0a6c3d296a3cfc8afce9e0bfee71f678708102edd0d0a"
+              }
+            }
+          ],
+          "coverage": "recorded_sources_only"
+        }
+      },
+      "result_sha256": "f60c035b54c87531835a45d52430ca0e33f72dfa8ad253e452a45acc3cda28c3"
+    }
+  },
+  "codex_interaction_regression": {
+    "raw_root": "/tmp/netcap-console-dk2kqr3b",
+    "exit_code": 0,
+    "checks": [
+      "native command approve and duplicate reply; file exists",
+      "native command decline and duplicate reply; file absent",
+      "native user question reply: message_input"
+    ]
+  },
+  "browser": "W02-native-selection-browser.json",
+  "verification": {
+    "go_test_race_all": "passed: go test -race -count=1 ./...",
+    "go_vet_all": "passed: go vet ./...",
+    "production_build": "passed: make dev-build; includes TypeScript and Vite",
+    "native_selection": "passed: 28 checks including repeated same-session approval",
+    "legacy_codex_claude_snapshot_regression": "passed: 16 checks each",
+    "codex_native_interaction_regression": "passed",
+    "browser": "passed: 18 checks, 1440/768px, no JavaScript errors",
+    "python_syntax": "passed",
+    "browser_script_syntax": "passed",
+    "document_references": "passed: 95 relative links and anchors",
+    "owned_process_cleanup": "passed: no remaining owned fixture processes",
+    "baseline_comparison": "passed: no baseline files removed",
+    "evidence_hashes": "passed"
+  },
+  "source_sha256_at_archive": {
+    "CONSOLE.md": "549c8fece0685571e52596b71de58858dc00e5c2c25b2fbc0008ded01ba69854",
+    "README.md": "b2a03750ed2b668c0984ced36a4a31f7ad5d8efcddd797a351c5a82ab2df933f",
+    "docs/implementation-plan.md": "f81eb30ddab8502a41556d18a0f92b554e9c6c4c23c8b6a4c2f48749503ac6ce",
+    "docs/workbench-boundary-results.md": "67df4b83236819e041913e0b82950ff671bc04234f0ed060fa3e3f7480964b5d",
+    "goals/PROGRESS.md": "34ca9ed7740e5c844ab7317db68c8efd80e213bcbbd6ac85dd632d16b65eeb09",
+    "internal/app/application.go": "ada2aca132910a80898463c3e1f15b704a4e24e93998f5bef3290e211a0f3615",
+    "internal/app/execution.go": "fc3252a6794b7ba4e1c4967f66e2278566e9e1cd23d64d1a72f66db6efe11a3f",
+    "internal/app/execution_test.go": "c2e09314d47faa05dbcc314eaf0bdf3003437de7a833f5dab767bd0b384b352d",
+    "internal/app/model.go": "879291cbc6c41bc1926849c2d21d42965af665865a904c70ccf2b159b1fe6ef9",
+    "internal/codex/types.go": "1b4198ef0c182eaeaf3ac91f2875924de9edf61e491661c29d82ef7e503df2d4",
+    "internal/runtime/codex.go": "bfd2945ea958bb69986bafbeb37935e3c60d50d8d002f76a5d7df5061a90693b",
+    "internal/runtime/codex_interactions.go": "aa998854f64846dee525ed131401f905a54fbb024acb7f1cdfe84a5a9648473f",
+    "internal/runtime/codex_mcp.go": "67fe6308b48edb2fe211eef4a7e8eb22960497595a6143f5665cded447faf7d3",
+    "internal/runtime/codex_mcp_test.go": "e7b8a92ae53f7675d7ab821828fc90f8f7fddb8eea061fd2c5825797549027cb",
+    "internal/runtime/codex_route.go": "1ab091d9120910009a0000d676afd8b9ad98503c0e6606672eefd6c37a59f996",
+    "internal/runtime/runtime.go": "dfa4a25654cd40cc7815e398d9a92a5e722b30fb6674e75053e027161149d5ad",
+    "tests/native_mcp_selection_browser.js": "1f5b315a5ea6144f57403566a12a600748fc3f5a09a2016c1abafaa6a39427ae",
+    "tests/native_mcp_selection_smoke.py": "5262ac8cd3e39c28b3a493e426cc95f02b1d1d2246af2d16c9880c29328ade6a",
+    "web/src/ExecutionDetails.tsx": "5ace44d6e4c48bca70dff3e64df53662b4e32c10be73e007b7ba89108544bfca",
+    "web/src/PendingAction.tsx": "fcbe95915662bf55342c2865176ed2b681cb248853534a0b17d9e501360c6dfa",
+    "web/src/main.tsx": "9a092cc146f733b0def3106efdbe2f5cf3406dbdff2da8c3069a4015bce96d79",
+    "web/src/style.css": "65c721a23c75bdd9746a8398fc121e58021b21d2e9ae0ac5b7f852630032e448"
+  },
+  "baseline": {
+    "root": "/tmp/netcap-w02-native-select-yz2z25yt",
+    "changed_existing_files": [
+      "internal/codex/types.go",
+      "internal/runtime/codex_route.go",
+      "internal/runtime/codex.go",
+      "internal/runtime/runtime.go",
+      "internal/runtime/codex_interactions.go",
+      "internal/app/execution.go",
+      "internal/app/execution_test.go",
+      "internal/app/application.go",
+      "internal/app/model.go",
+      "web/src/PendingAction.tsx",
+      "web/src/ExecutionDetails.tsx",
+      "web/src/style.css",
+      "web/src/main.tsx",
+      "docs/implementation-plan.md",
+      "docs/workbench-boundary-results.md",
+      "goals/PROGRESS.md",
+      "README.md",
+      "CONSOLE.md"
+    ],
+    "removed_files": []
+  },
+  "primary_sources": [
+    "https://learn.chatgpt.com/docs/app-server",
+    "https://github.com/openai/codex/blob/main/codex-rs/app-server-protocol/src/protocol/common.rs",
+    "https://github.com/openai/codex/blob/main/codex-rs/app-server/src/bespoke_event_handling.rs"
+  ],
+  "limits": [
+    "only new Codex console sessions and already defined local stdio servers from the bound user config.toml",
+    "capability_refs still only record dependencies; explicit capability_selections change native enabled state",
+    "unselected MCP servers inherit; no claim of global exclusion",
+    "source digests do not pin MCP binaries, transitive dependencies, process environment, account state or all effective config",
+    "Claude/Skill/CLI-plugin selection, remote MCP, arbitrary installation and original-session reconfiguration pending",
+    "native observation is not an atomic lock against concurrent external changes",
+    "W01 strict foreground and Claude worker tool output gaps remain; W01/W02 in progress; W04-W07 not started"
+  ]
+}
