@@ -76,7 +76,11 @@ def audit(root):
         selection = next(row for row in original['mcp_selections'] if row['asset_id'] == 'shared')
         if profile.startswith('codex'):
             binding = selection['definition']
-            check(profile + '_pins_actual_definition_bytes', binding['version'] == 1 and binding['sha256'] == definition_hash)
+            check(profile + '_pins_actual_definition_bytes', binding['version'] in [1, 2] and binding['sha256'] == definition_hash)
+            if binding['version'] == 2:
+                launch = binding['binding']
+                observed = next(row for row in initial['view']['capability_evidence'] if row.get('asset_id') == 'shared' and row.get('mode') != 'history')
+                check(profile + '_actual_load_matches_bound_resource', observed['verified'] and observed['binding'] == {key: launch[key] for key in ['version', 'digest', 'asset_id', 'asset_version', 'server']} and launch['asset_version'] == shared_refs[-1]['asset']['version'])
             expected_values = {'NETCAP_MCP_CONTEXT': profile, 'NETCAP_MCP_LOG': str(root / 'calls' / profile), 'NETCAP_MCP_SECRET': 'fixture-mcp-' + profile}
             expected_bindings = [{'name': name, 'present': True, 'sha256': hashlib.sha256(('netcap-codex-mcp-environment-v1\x00' + name + '\x00true\x00' + value).encode()).hexdigest()}
                                  for name, value in sorted(expected_values.items())]

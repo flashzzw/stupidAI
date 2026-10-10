@@ -98,12 +98,12 @@ async page => {
       const selection = fixture.frames.initial['/api/sessions/' + fixture.sessions[profile] + '/execution'].snapshot.mcp_selections.find(row => row.asset_id === 'shared');
       check(profile + '_source_version_and_environment_names_visible', text.includes(selection.source_path) && text.includes(selection.definition.sha256) &&
         selection.definition.environment.every(binding => text.includes(binding.name + ' · 记录时已设置')));
-      check(profile + '_does_not_claim_loaded_definition_version', text.includes('不能独立证明加载了哪一版定义'));
+      check(profile + '_distinguishes_planned_definition_from_actual_loading', selection.definition.version === 2 ? text.includes('计划启动标识') && text.includes(selection.definition.binding.digest) && text.includes('下方原生核对展示实际启动标识') : text.includes('不能独立证明加载了哪一版定义'));
       check(profile + '_credential_values_are_not_rendered', !text.includes('fixture-mcp-'));
       const change = page.locator('.execution-change');
-      check(profile + '_change_only_offers_enable_and_disable', JSON.stringify(await change.locator('select[data-mcp-mode="shared"] option').evaluateAll(rows => rows.map(row => row.value))) === JSON.stringify(['enabled', 'disabled']));
-      check(profile + '_unsupported_resource_changes_are_not_offered', await change.getByLabel('添加 MCP 资产', {exact: true}).count() === 0 &&
-        await change.locator('select[data-mcp-version="shared"]').count() === 0 && (await change.innerText()).includes('新增、恢复继承和替换资源版本尚未开放'));
+      check(profile + '_resource_change_offers_enable_disable_and_inherit', JSON.stringify(await change.locator('select[data-mcp-mode="shared"] option').evaluateAll(rows => rows.map(row => row.value))) === JSON.stringify(['enabled', 'disabled', 'inherit']));
+      check(profile + '_resource_addition_and_bound_versions_are_explained', await change.getByLabel('添加 MCP 资产', {exact: true}).count() === 1 &&
+        await change.locator('select[data-mcp-version="shared"]').count() === 0 && (await change.innerText()).includes('新版本以实际启动标识核对'));
     }
     await screenshot('native-1440');
     await page.setViewportSize({width: 390, height: 844});

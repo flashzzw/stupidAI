@@ -307,7 +307,7 @@ def exercise(f):
         for row in before['snapshot'].get('mcp_selections', []) + before['snapshot'].get('skill_selections', []) + before['snapshot'].get('plugin_selections', []):
             asset = refs[row['asset_id']]
             picks[row['asset_id']] = {'asset_id': row['asset_id'], 'mode': row['mode']}
-            if profile.startswith('claude') or asset['kind'] in ['skill', 'cli_plugin']:
+            if profile.startswith('claude') or asset['kind'] in ['skill', 'cli_plugin'] or row.get('definition'):
                 picks[row['asset_id']]['version'] = asset['version']
         for row in selections:
             picks[row['asset_id']].update(row)
