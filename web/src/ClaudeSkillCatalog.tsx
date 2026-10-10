@@ -54,7 +54,7 @@ export function ClaudeSkillCatalog({ sessionId, connected, read }: {
           </div>)}
           {!catalog.instructions.items.length?<p className="hint">本次报告未列出指令文件；不能据此判断没有其他来源。</p>:null}
         </> : <p className="hint">原生查询未提供可核对的指令文件清单。</p>}
-        <p className="hint">这些文件由 CLI 继承。路径和 token 估算来自本次原生报告，未绑定已加载的文件版本；完整来源、独立排除与权限覆盖仍需另外核对。</p>
+        <p className="hint">路径和 token 估算来自当前原生汇总，可能未列出工具触发的嵌套指令及历史旧内容；未绑定已加载的文件版本。完整来源、独立排除与权限覆盖仍需另外核对。</p>
       </section>
       {catalog.items.filter(item=>item.description_listed&&item.source!=='built-in').map(renderItem)}
       {catalog.items.some(item=>!item.description_listed||item.source==='built-in')?<details><summary>内置 Skill 与仅命令条目 · {catalog.items.filter(item=>!item.description_listed||item.source==='built-in').length} 项</summary>

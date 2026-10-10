@@ -78,6 +78,7 @@ async page => {
     check('native_token_estimates_visible', sample.items.every(item => text.includes('约 ' + item.tokens.toLocaleString() + ' tokens')));
     check('instruction_body_not_rendered', !text.includes('PRIVATE_INSTRUCTION_BODY_'));
     check('loaded_version_not_claimed', text.includes('未绑定已加载的文件版本'));
+    check('nested_and_historical_source_limits_visible', text.includes('工具触发的嵌套指令及历史旧内容'));
     check('source_and_permission_limits_visible', text.includes('完整来源、独立排除与权限覆盖仍需另外核对'));
     check('first_query_identity_visible', (await panel.innerText()).includes(fixture.responses[base].session.scope.native_id));
     await noOverflow('desktop');
