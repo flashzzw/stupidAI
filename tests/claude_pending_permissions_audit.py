@@ -104,7 +104,10 @@ def audit(root, mode):
         guard = pending['permission_guard']
         check('failed_approval_keeps_live_original_request', pending['status'] == 'pending' and after['connection'] == 'ready' and pending['native_turn'] == operation)
         check('allow_receipt_not_sent', app['observations']['allow-http-status'] >= 400 or app['observations']['allow-operation']['status'] == 'not_sent')
-        expected = 'unavailable' if mode == 'user-invalid' else 'observed' if mode == 'local-drift' else 'changed'
+        visible_notices = {n['id'] for n in after['view'].get('configuration_notices', {}).get('items', [])}
+        original_notices = [e['notice'] for e in journal if e['kind'] == 'configuration_notice' and e['notice']['id'] in visible_notices
+                            and e['notice']['query_id'] == baseline['query_id']]
+        expected = 'unavailable' if mode == 'user-invalid' or mode.endswith('-notice') else ('unavailable' if original_notices else 'observed') if mode == 'local-drift' else 'changed'
         check('original_guard_state_visible', guard['state'] == expected and guard['complete'] is False)
         if mode == 'restore':
             check('restoration_does_not_reauthorize_old_request', guard['checked_hash'] == guard['baseline_hash'] and guard['state'] == 'changed')

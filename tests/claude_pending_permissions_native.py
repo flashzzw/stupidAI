@@ -17,6 +17,7 @@ from runtime.common import stop
 
 REPO = Path(__file__).resolve().parents[1]
 MODES = ['unchanged', 'deny', 'restore', 'invalid', 'user-invalid', 'local-drift', 'interrupt']
+NOTICE_MODES = ['policy-notice', 'policy-disabled-notice', 'policy-managed-notice', 'user-notice', 'project-notice', 'local-notice']
 
 
 def inside(root, binary, mode):
@@ -28,13 +29,21 @@ def inside(root, binary, mode):
     cwd.mkdir()
     subprocess.run(['git', 'init', '--quiet', str(cwd)], env=env, check=True)
     write(cwd / '.claude/settings.local.json', {'env': {'NETCAP_PENDING_VERSION': 'original'}})
+    if mode == 'project-notice':
+        write(cwd / '.claude/settings.json', {'env': {'NETCAP_NOTICE_PROJECT': 'original'}})
     initial = {'allowManagedPermissionRulesOnly': True, 'permissions': {'ask': ['Read(./target-A.txt)', 'Read(./target-B.txt)']}}
+    if mode == 'policy-disabled-notice':
+        initial['disableAllHooks'] = True
+    if mode == 'policy-managed-notice':
+        initial['allowManagedHooksOnly'] = True
     write(root / 'policy/managed-settings.json', initial)
     providers, profiles = {}, {}
     proc = None
     try:
         for label in ['A', 'B']:
             profile = Path(environment(root / ('execution-' + label))['CLAUDE_CONFIG_DIR'])
+            if mode == 'user-notice':
+                write(profile / 'settings.json', {'env': {'NETCAP_NOTICE_USER': 'original'}})
             target = cwd / ('target-' + label + '.txt')
             write(target, 'OWNED_PENDING_POLICY_CONTENT_' + label + '\n')
             provider = PermissionProvider(root, label)
@@ -103,7 +112,7 @@ def inside(root, binary, mode):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary', type=Path, required=True)
-    parser.add_argument('--case', choices=MODES, default='deny')
+    parser.add_argument('--case', choices=MODES + NOTICE_MODES, default='deny')
     parser.add_argument('--inside', type=Path)
     args = parser.parse_args()
     if args.inside:

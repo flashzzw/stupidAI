@@ -55,7 +55,7 @@ func TestClaudeNativePendingPermissionChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer a.Close()
+	defer func() { _ = a.Close() }()
 	checks, observations := map[string]bool{}, map[string]any{}
 	frames := map[string]map[string]json.RawMessage{}
 	trace := []map[string]any{}
@@ -161,6 +161,12 @@ func TestClaudeNativePendingPermissionChanges(t *testing.T) {
 		wait("query ready", func() bool { s := get(r.SessionID); return s.Status == "idle" && s.View.NativeStatus == "sdk_live" })
 	}
 	first, sibling := get(sessions["A"]), get(sessions["B"])
+	noticeCase := strings.HasSuffix(request.Mode, "-notice")
+	if noticeCase {
+		check("both_notification_observers_registered", first.View.ConfigurationNotices != nil && first.View.ConfigurationNotices.Registered &&
+			sibling.View.ConfigurationNotices != nil && sibling.View.ConfigurationNotices.Registered)
+		observations["initial-notices-A"], observations["initial-notices-B"] = first.View.ConfigurationNotices, sibling.View.ConfigurationNotices
+	}
 	initial := catalog("initial-report")
 	status, sent := command(app.Command{ID: "send-pending", Kind: "send", SessionID: first.ID, Text: "NETCAP_PERMISSION_CASE=pending ROUTE=A"})
 	check("original_input_accepted", status < 300)
@@ -184,7 +190,72 @@ func TestClaudeNativePendingPermissionChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if request.Mode != "unchanged" && request.Mode != "local-drift" {
+	if noticeCase {
+		source, nativePath, targetPath := "policy_settings", "/etc/claude-code/managed-settings.json", policyPath
+		switch request.Mode {
+		case "user-notice":
+			source, targetPath = "user_settings", filepath.Join(request.Profiles["A"].Profile, "settings.json")
+			nativePath = targetPath
+		case "project-notice":
+			source, targetPath = "project_settings", filepath.Join(request.Cwd, ".claude/settings.json")
+			nativePath = targetPath
+		case "local-notice":
+			source, targetPath = "local_settings", filepath.Join(request.Cwd, ".claude/settings.local.json")
+			nativePath = targetPath
+		}
+		body, e := os.ReadFile(targetPath)
+		var target map[string]any
+		if e != nil || json.Unmarshal(body, &target) != nil {
+			t.Fatal("owned configuration unavailable", e)
+		}
+		write("notice-original.json", target)
+		target["env"] = map[string]string{"NETCAP_NOTICE_ONLY": "harmless owned metadata change"}
+		write("notice-target.json", target)
+		body, _ = json.Marshal(target)
+		if os.WriteFile(targetPath, body, 0600) != nil {
+			t.Fatal("owned notification change failed")
+		}
+		observations["notification-change"] = map[string]string{"source": source, "native_path": nativePath, "owned_path": targetPath}
+		var notice runtime.ConfigurationNotice
+		wait("original configuration notification", func() bool {
+			h := get(first.ID).View.ConfigurationNotices
+			if h == nil {
+				return false
+			}
+			for _, n := range h.Items {
+				if n.QueryID == initial.QueryID && n.Source == source && n.Path == nativePath && n.ReceiptOperation == sent.OperationID {
+					notice = n
+					return true
+				}
+			}
+			return false
+		})
+		observations["original-notice"] = notice
+		check("notice_retains_original_input_snapshot", notice.NativeID == first.Scope.NativeID && notice.ConfigurationID == initial.ConfigurationID && notice.ReceiptSnapshotID == first.ExecutionSnapshot.ID && notice.ReceiptCorrelation == "journal_in_flight")
+		report := catalog("notification-report")
+		check("notice_does_not_claim_changed_permission_rules", report.SampleHash == initial.SampleHash && report.QueryID == initial.QueryID && len(report.Errors) == 0)
+		wait("notice invalidates original approval", func() bool {
+			return slices.ContainsFunc(get(first.ID).View.Pending, func(p runtime.Pending) bool {
+				return p.ID == original.ID && p.PermissionGuard != nil && p.PermissionGuard.State == "unavailable" && p.PermissionGuard.ConfigurationNoticeID == notice.ID
+			})
+		})
+		if request.Mode == "project-notice" || request.Mode == "local-notice" {
+			check("local_block_callback_preserved", get(first.ID).View.SettingsGuard != nil && slices.ContainsFunc(get(first.ID).View.SettingsGuard.Changes, func(change runtime.ClaudeSettingsChange) bool {
+				return change.Source == source && change.Path == nativePath && change.Decision == "block_requested"
+			}))
+		}
+		if request.Mode != "user-notice" {
+			wait("idle sibling receives its own notification", func() bool {
+				h := get(sibling.ID).View.ConfigurationNotices
+				return h != nil && slices.ContainsFunc(h.Items, func(n runtime.ConfigurationNotice) bool { return n.Source == source && n.Path == nativePath })
+			})
+			h := get(sibling.ID).View.ConfigurationNotices
+			check("idle_sibling_notice_has_no_input_snapshot", !slices.ContainsFunc(h.Items, func(n runtime.ConfigurationNotice) bool {
+				return n.NativeID != sibling.Scope.NativeID || n.ReceiptOperation != "" || n.ReceiptSnapshotID != "" || n.QueryID == initial.QueryID
+			}))
+		}
+		observations["sibling-notices"] = get(sibling.ID).View.ConfigurationNotices
+	} else if request.Mode != "unchanged" && request.Mode != "local-drift" {
 		target := map[string]any{"allowManagedPermissionRulesOnly": true, "permissions": map[string]any{"deny": []string{"Read(./target-A.txt)"}, "ask": []string{"Read(./target-B.txt)"}}}
 		if request.Mode == "invalid" {
 			target["permissions"] = map[string]any{"deny": 17}
@@ -240,7 +311,7 @@ func TestClaudeNativePendingPermissionChanges(t *testing.T) {
 	export("after-allow-transient")
 	if request.Mode != "unchanged" && request.Mode != "local-drift" {
 		want := "changed"
-		if request.Mode == "user-invalid" {
+		if request.Mode == "user-invalid" || noticeCase {
 			want = "unavailable"
 		}
 		wait("blocked approval visible in original request", func() bool {
@@ -277,5 +348,31 @@ func TestClaudeNativePendingPermissionChanges(t *testing.T) {
 	check("only_one_original_input", len(slices.DeleteFunc(append([]runtime.Message(nil), current.View.Messages...), func(m runtime.Message) bool { return m.Role != "user" })) == 1)
 	check("sibling_id_and_snapshot_kept", get(sibling.ID).Scope.NativeID == sibling.Scope.NativeID && reflect.DeepEqual(get(sibling.ID).ExecutionSnapshot, sibling.ExecutionSnapshot) && len(get(sibling.ID).View.Messages) == 0)
 	export("finished")
+	if request.Mode == "policy-notice" {
+		before := get(first.ID).View.ConfigurationNotices
+		check("application_closes_after_original_terminal", a.Close() == nil)
+		store, err = app.OpenStore(c.StateDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a, err = app.Open(c, store, runtime.NewClaude(c.StateDir))
+		if err != nil {
+			t.Fatal(err)
+		}
+		handler = console.Handler(a, "127.0.0.1:9468", strings.Repeat("c", 64), os.DirFS("."))
+		wait("saved history after original-ID reopen", func() bool {
+			s := get(first.ID)
+			return s.View.NativeStatus == "sdk_offline" && s.View.ConfigurationNotices != nil && len(s.View.ConfigurationNotices.Items) >= len(before.Items)
+		})
+		h := get(first.ID).View.ConfigurationNotices
+		check("reopened_history_is_not_current_query", h.Available && !h.Registered && !h.Complete && h.CurrentQueryID == "" && h.CurrentCount == 0 && !slices.ContainsFunc(h.Items, func(n runtime.ConfigurationNotice) bool { return n.Current }))
+		for _, n := range before.Items {
+			check("reopened_notice_"+n.ID, slices.ContainsFunc(h.Items, func(saved runtime.ConfigurationNotice) bool {
+				return saved.ID == n.ID && saved.QueryID == n.QueryID && saved.PromptID == n.PromptID && saved.ReceiptOperation == n.ReceiptOperation && saved.ReceiptSnapshotID == n.ReceiptSnapshotID
+			}))
+		}
+		check("reopened_original_id_and_snapshot", get(first.ID).Scope.NativeID == first.Scope.NativeID && reflect.DeepEqual(get(first.ID).ExecutionSnapshot, first.ExecutionSnapshot))
+		export("reopened")
+	}
 	write("final-snapshot.json", a.Snapshot())
 }
