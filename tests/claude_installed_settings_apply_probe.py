@@ -31,6 +31,23 @@ class InstalledProvider(Provider):
         return super().anthropic(payload, answer, seq)
 
 
+def foreign_instruction_sources(payload, root):
+    sources = set()
+
+    def visit(value):
+        if isinstance(value, str):
+            sources.update(re.findall(r'Contents of ([^\n]+?) \((?:project|user) instructions', value))
+        elif isinstance(value, dict):
+            for child in value.values():
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+
+    visit(payload)
+    return sorted(source for source in sources if not Path(source).is_relative_to(root))
+
+
 def setup(root, providers, settings_source):
     market = root / 'market'
     write(market / '.claude-plugin/marketplace.json', {'name': 'owned', 'owner': {'name': 'Fixture'},
@@ -131,8 +148,20 @@ def inside(root, binary, mode, settings_source):
 import json,os,sys
 from pathlib import Path
 fault=Path(%s)
-if fault.exists() and '--resume' in sys.argv and '--bare' not in sys.argv and '--input-format' in sys.argv and 'stream-json' in sys.argv:
- native_id=sys.argv[sys.argv.index('--resume')+1]
+def option(name):
+ for index,arg in enumerate(sys.argv[1:],1):
+  if arg.startswith(name+'='):return arg[len(name)+1:]
+  if arg==name and index+1<len(sys.argv):return sys.argv[index+1]
+ return None
+resume=option('--resume')
+bare=any(arg=='--bare' or arg.startswith('--bare=') for arg in sys.argv[1:])
+if fault.exists() and not bare and option('--input-format')=='stream-json':
+ metadata=fault.parent.parent/'application/runtimes/a'/((resume or 'missing-resume')+'.json')
+ change=json.loads(metadata.read_text()).get('_configuration',{}) if metadata.is_file() else {}
+ with fault.with_name('original-start-attempts.jsonl').open('a') as observed:
+  observed.write(json.dumps({'flags':[arg.split('=')[0] for arg in sys.argv if arg.startswith('--')],'resume':resume,'metadata_exists':metadata.is_file(),'status':change.get('status'),'progress':change.get('progress'),'has_recovery':'recovery' in change})+'\\n')
+if fault.exists() and resume and not bare and option('--input-format')=='stream-json':
+ native_id=resume
  metadata=fault.parent.parent/'application/runtimes/a'/(native_id+'.json')
  change=json.loads(metadata.read_text()).get('_configuration',{})
  if change.get('status')=='applying' and change.get('progress')=={'version':1,'phase':'original'} and 'recovery' not in change:
@@ -178,9 +207,14 @@ await import(%s);
         write(root / 'native.stderr', result.stderr)
         print(result.stdout, end='')
         print(result.stderr, end='', file=sys.stderr)
-        write(root / 'provider-result.json', {letter: {'requests': len(p.requests), 'errors': p.errors,
-            'authenticated': all(row['auth_matches'] for row in p.requests), 'issued': sorted(p.issued)} for letter, p in providers.items()})
-        return result.returncode
+        provider_result = {letter: {'requests': len(p.requests), 'errors': p.errors,
+            'authenticated': all(row['auth_matches'] for row in p.requests), 'issued': sorted(p.issued),
+            'foreign_instruction_sources': foreign_instruction_sources(p.requests, root)} for letter, p in providers.items()}
+        write(root / 'provider-result.json', provider_result)
+        isolated = all(not item['foreign_instruction_sources'] for item in provider_result.values())
+        if not isolated:
+            print('Native fixture loaded instructions outside its owned directory; see provider-result.json', file=sys.stderr)
+        return result.returncode or (0 if isolated else 1)
     finally:
         for provider in providers.values():
             provider.close()
@@ -196,7 +230,9 @@ def main():
     args = parser.parse_args()
     if args.inside:
         raise SystemExit(inside(args.inside, args.binary, args.case, args.settings_source))
-    root = Path(tempfile.mkdtemp(prefix='installed-apply-'))
+    # Native project instructions walk cwd ancestors, even with a private HOME.
+    # Keep the fixture outside repository/home ancestors and the masked /tmp.
+    root = Path(tempfile.mkdtemp(prefix='installed-apply-', dir='/var/tmp'))
     print('Evidence directory:', root, flush=True)
     policy = {'allowManagedPermissionRulesOnly': True, 'permissions': {'allow': ['mcp__plugin_selected_identity__whoami']}} if args.policy == 'managed-only' else {}
     write(root / 'policy/managed-settings.json', policy)

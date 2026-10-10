@@ -327,6 +327,10 @@ func TestClaudeNativeInstalledSettingsApplication(t *testing.T) {
 			wait("uncertain installed application", func() bool {
 				for _, op := range a.Snapshot().Operations {
 					if op.ID == appliedReceipt.OperationID {
+						if op.Status == "succeeded" || op.Status == "not_sent" || op.Status == "failed" {
+							write(filepath.Join(fixture.Root, "failed-snapshot.json"), a.Snapshot())
+							t.Fatalf("injected application failure returned %s instead of uncertain", op.Status)
+						}
 						return op.Status == "uncertain" && session(current.ID).Status == "unknown"
 					}
 				}
