@@ -154,20 +154,21 @@ type Message struct {
 }
 
 type Pending struct {
-	ID              string          `json:"id"`
-	NativeID        string          `json:"native_id"`
-	NativeTurn      string          `json:"native_turn"`
-	Kind            string          `json:"kind"`
-	Request         json.RawMessage `json:"request"`
-	ConnectionID    string          `json:"connection_id"`
-	RequestID       json.RawMessage `json:"request_id"`
-	ResponseKind    string          `json:"response_kind"`
-	Title           string          `json:"title"`
-	Details         string          `json:"details,omitempty"`
-	Options         []Option        `json:"options"`
-	Questions       []Question      `json:"questions"`
-	Status          string          `json:"status"`
-	AnswerOperation string          `json:"answer_operation,omitempty"`
+	PermissionGuard *PermissionApprovalEvidence `json:"permission_guard,omitempty"`
+	ID              string                      `json:"id"`
+	NativeID        string                      `json:"native_id"`
+	NativeTurn      string                      `json:"native_turn"`
+	Kind            string                      `json:"kind"`
+	Request         json.RawMessage             `json:"request"`
+	ConnectionID    string                      `json:"connection_id"`
+	RequestID       json.RawMessage             `json:"request_id"`
+	ResponseKind    string                      `json:"response_kind"`
+	Title           string                      `json:"title"`
+	Details         string                      `json:"details,omitempty"`
+	Options         []Option                    `json:"options"`
+	Questions       []Question                  `json:"questions"`
+	Status          string                      `json:"status"`
+	AnswerOperation string                      `json:"answer_operation,omitempty"`
 }
 
 type Option struct {

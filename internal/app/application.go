@@ -451,8 +451,17 @@ func (a *Application) applyCommand(command Command, automatic bool) (CommandRece
 		if pending == nil {
 			return receipt, fmt.Errorf("请求已处理、过期或尚待核对")
 		}
-		if err := a.verifyRouteBinding(session); err != nil {
-			return receipt, err
+		var bindingError error
+		if runtime.IsClaudeToolDenial(runtime.Intent{Kind: command.Kind, Scope: session.Scope, Pending: pending, OptionID: command.OptionID, Text: command.Text, Answers: command.Answers}) {
+			bindingError = verifyExecutionBinding(session)
+			if bindingError == nil {
+				bindingError = a.verifyRouteRegistry(session)
+			}
+		} else {
+			bindingError = a.verifyRouteBinding(session)
+		}
+		if bindingError != nil {
+			return receipt, bindingError
 		}
 		for _, existing := range next.Operations {
 			if existing.Intent.Pending != nil && existing.Intent.Pending.ID == pending.ID && !terminal(existing.Status) {
@@ -618,7 +627,11 @@ func (a *Application) dispatch(op Operation) {
 		}
 	} else if next.Sessions[op.SessionID].ExecutionSnapshot != nil && (op.Intent.Kind == "create" || op.Intent.Kind == "send" || op.Intent.Kind == "respond" || op.Intent.Kind == "resume") {
 		session := next.Sessions[op.SessionID]
-		if err := verifyExecutionSources(session); err != nil {
+		verify := verifyExecutionSources
+		if runtime.IsClaudeToolDenial(op.Intent) {
+			verify = verifyExecutionBinding
+		}
+		if err := verify(session); err != nil {
 			cancelReason = err.Error()
 		} else if session.ExecutionSnapshot != nil && op.ExecutionSnapshotID != session.ExecutionSnapshot.ID {
 			cancelReason = "操作引用的执行快照与原会话不一致"

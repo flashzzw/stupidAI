@@ -15,6 +15,7 @@ export class NativeHookChannel {
   private readonly prefix = `netcap-hooks-${randomUUID()}-`;
   private counter = 0;
   private stopped = false;
+  private queue: Promise<unknown> = Promise.resolve();
   private pending?: { id: string; resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout>; failure: () => Error };
 
   constructor(private readonly child: ChildProcessWithoutNullStreams) {
@@ -72,7 +73,15 @@ export class NativeHookChannel {
     }
   }
 
-  private async request(subtype: 'get_hooks_listing' | 'list_permission_rules', failure: () => Error) {
+  private request(subtype: 'get_hooks_listing' | 'list_permission_rules', failure: () => Error) {
+    // Approval checks and read-only panels share the original transport. Queue
+    // their owned reads so concurrent tool prompts do not invalidate each other.
+    const result = this.queue.then(() => this.dispatch(subtype, failure));
+    this.queue = result.catch(() => {});
+    return result;
+  }
+
+  private async dispatch(subtype: 'get_hooks_listing' | 'list_permission_rules', failure: () => Error) {
     if (this.stopped || this.pending || this.child.exitCode !== null || this.child.signalCode !== null) throw failure();
     return new Promise<unknown>((resolve, reject) => {
       const id = this.prefix + (++this.counter);

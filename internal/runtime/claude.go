@@ -74,6 +74,7 @@ func claudeCredential(route Route) (string, error) {
 }
 
 func (c *Claude) Execute(ctx context.Context, in Intent) (Receipt, error) {
+	denyingTool := IsClaudeToolDenial(in)
 	executionScope := in.Scope
 	if in.ClaudeInstalledRecovery != nil {
 		var err error
@@ -88,7 +89,7 @@ func (c *Claude) Execute(ctx context.Context, in Intent) (Receipt, error) {
 	if in.Scope.SettingsGuardVersion != 0 && (in.Scope.SettingsGuardVersion != 1 || in.Scope.Purpose != "" || in.Scope.Instance.Kind != "claude") {
 		return Receipt{}, &NotSent{Reason: "Claude 本地设置阻止机制版本无效"}
 	}
-	if in.Kind == "create" || in.Kind == "send" || in.Kind == "respond" || in.Kind == "apply_execution" || in.Kind == "prepare_execution" || in.Kind == "recover_execution" {
+	if in.Kind == "create" || in.Kind == "send" || in.Kind == "respond" && !denyingTool || in.Kind == "apply_execution" || in.Kind == "prepare_execution" || in.Kind == "recover_execution" {
 		if err := ValidateClaudeExecutionSettings(ctx, executionScope); err != nil {
 			return Receipt{}, &NotSent{Reason: err.Error()}
 		}
@@ -122,11 +123,25 @@ func (c *Claude) Execute(ctx context.Context, in Intent) (Receipt, error) {
 	}
 	c.lastUse[in.Scope.Instance.ID] = time.Now()
 	defer delete(c.cache, in.Scope.Instance.ID+"/"+in.Scope.NativeID)
-	p, err := c.client(ctx, in.Scope.Instance)
+	var p *claudeTransport
+	var err error
+	if denyingTool {
+		p = c.clients[in.Scope.Instance.ID]
+		if c.closing || p == nil {
+			return Receipt{}, &NotSent{Reason: "原审批连接已关闭；拒绝请求不会启动或恢复查询"}
+		}
+		select {
+		case <-p.done:
+			return Receipt{}, &NotSent{Reason: "原审批连接已关闭；请核对原请求"}
+		default:
+		}
+	} else {
+		p, err = c.client(ctx, in.Scope.Instance)
+	}
 	if err != nil {
 		return Receipt{}, &NotSent{Reason: err.Error()}
 	}
-	if in.Scope.ClaudeInstalledSettings != nil && in.Kind != "apply_execution" && in.Kind != "interrupt" && in.ClaudeInstalledRecovery == nil {
+	if in.Scope.ClaudeInstalledSettings != nil && in.Kind != "apply_execution" && in.Kind != "interrupt" && in.ClaudeInstalledRecovery == nil && !denyingTool {
 		use, err := c.holdInstalledSettings(ctx, p, in.Scope, false)
 		if err != nil {
 			return Receipt{}, &NotSent{Reason: err.Error()}
@@ -213,6 +228,9 @@ func (c *Claude) Execute(ctx context.Context, in Intent) (Receipt, error) {
 			}
 			if params["decision"] == nil {
 				return receipt, &NotSent{Reason: "选项不属于原始请求"}
+			}
+			if params["decision"] == "allow" && p.pendingPermissions != 1 {
+				return receipt, &NotSent{Reason: "当前 bridge 未声明原审批权限观察约束，不能批准；请拒绝或中止原输入"}
 			}
 		}
 	case "interrupt":

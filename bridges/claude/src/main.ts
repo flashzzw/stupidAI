@@ -22,7 +22,7 @@ function existing(params: Record<string, unknown>): Session {
 
 async function handle(method: string, params: Record<string, unknown>) {
   if (stopping) throw new NotSent('bridge is closing');
-  if (method === 'hello') return { version: protocolVersion, sdk: '0.3.280', settings_file_consumer: 1, installed_settings: 1, installed_settings_recovery: 1, original_query_recovery: 1 };
+  if (method === 'hello') return { version: protocolVersion, sdk: '0.3.280', settings_file_consumer: 1, installed_settings: 1, installed_settings_recovery: 1, original_query_recovery: 1, pending_permissions: 1 };
   if (method === 'discover') return discover(params);
   if (method === 'inspect_native') return inspectNative(params);
   if (method === 'read_native_history') return readNativeHistory(params);

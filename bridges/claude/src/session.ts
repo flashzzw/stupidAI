@@ -9,6 +9,7 @@ import { selectedPlugins, executionPlugins, pluginInventory, pluginSelections, p
 import { mcpDefinitions, mcpInventory, mcpMatches, mcpSelections, mcpToolPrefix, verifyMCP } from './mcp.js';
 import { prepareSkillResources } from './skill_resources.js';
 import { NativeHookChannel } from './hook_catalog.js';
+import { permissionSample, permissionApproval, observePermissionApproval, permissionApprovalFailure, type PermissionSample, type PermissionApproval } from './permission_approvals.js';
 import { applySkillSelections, inheritedSkills, skillChangeMatches, skillInventory, skillSelections, verifySkillSources, verifySkills } from './skills.js';
 import { fingerprint, readMetadata, writeMetadata, configurationFailure, originalQueryRecovery, originalQueryRecoveryMatches, type ConfigurationChange, type ConfigurationFailure, type ConfigurationRecovery } from './configuration.js';
 import { randomUUID } from 'node:crypto';
@@ -18,7 +19,8 @@ import type { ChildProcess } from 'node:child_process';
 import { query, getSessionMessages, type SDKMessage, type SDKUserMessage, type Query, type PermissionResult, type Settings } from '@anthropic-ai/claude-agent-sdk';
 import { MCPAuthenticationRequired, NotSent, type SessionConfig, record, text, uuid } from './protocol.js';
 
-type Entry = ({ kind: 'input'; operation: string; text: string } |
+type Entry = ({ kind: 'input'; operation: string; text: string; permission_baseline?: PermissionApproval } |
+  { kind: 'permission_check'; operation: string; request_id: string; action: 'invalidated' | 'checked_allow' | 'deny'; guard: PermissionApproval } |
   { kind: 'configuration_failure'; failure: ConfigurationFailure } |
   { kind: 'settings_change'; change: SettingsChange } |
   { kind: 'instruction_load'; load: InstructionLoad } |
@@ -26,7 +28,7 @@ type Entry = ({ kind: 'input'; operation: string; text: string } |
   { kind: 'event'; operation: string; event: SDKMessage } |
   { kind: 'initialized' | 'closed'; connection: string; pid?: number }) & { at?: string; query_id?: string };
 type Request = { id: string; connection: string; operation: string; tool: string; input: Record<string, unknown>;
-  title: string; status: 'pending' | 'submitted' | 'expired'; resolve: (value: PermissionResult) => void };
+  title: string; status: 'pending' | 'submitted' | 'expired'; permission_guard?: PermissionApproval; resolve: (value: PermissionResult) => void };
 
 // Only SDK transport data is journaled here. Admission, scheduling, routing and
 // operation outcomes remain in Go. Fsync precedes every input handoff/receipt.
@@ -47,6 +49,7 @@ export class Session {
   private wake?: () => void;
   private stopping = false;
   private active = '';
+  private inputPermissions?: { operation: string; guard: PermissionApproval };
   private reading?: Promise<void>;
   private stream = '';
   private fault = '';
@@ -161,9 +164,20 @@ export class Session {
             ? { behavior: 'allow', updatedInput: args }
             : { behavior: 'deny', message: 'This isolated probe permits only the fixed UTC date command.' };
         }
+        const operation = this.active, connection = this.connection;
+        if (tool !== 'AskUserQuestion') {
+          try { await this.permissionCatalog(); } catch { this.observePermissions(undefined, instructionQuery.id); }
+        }
+        if (options.signal.aborted || this.stopping || operation !== this.active || connection !== this.connection || this.instructionQuery !== instructionQuery) {
+          return {behavior: 'deny', message: 'Request expired'};
+        }
+        const baseline = this.inputPermissions;
+        const guard = baseline?.operation === operation && baseline.guard.query_id === instructionQuery.id && baseline.guard.configuration_id === instructionQuery.configuration
+          ? {...baseline.guard} : permissionApproval(instructionQuery.id, instructionQuery.configuration);
         return new Promise<PermissionResult>(resolve => {
-          const request: Request = { id, connection: this.connection, operation: this.active, tool, input: args,
-            title: options.title ?? options.decisionReason ?? tool, status: 'pending', resolve };
+          const request: Request = { id, connection, operation, tool, input: args,
+            title: options.title ?? options.decisionReason ?? tool, status: 'pending', resolve,
+            ...(tool === 'AskUserQuestion' ? {} : {permission_guard:guard}) };
           this.requests.set(id, request);
           options.signal.addEventListener('abort', () => { request.status = 'expired'; resolve({ behavior: 'deny', message: 'Request expired' }); }, { once: true });
         });
@@ -249,6 +263,7 @@ export class Session {
         }
         if (event.type === 'result') {
           this.active = '';
+          this.inputPermissions = undefined;
           this.stream = '';
           for (const request of this.requests.values()) request.status = 'expired';
         }
@@ -274,7 +289,17 @@ export class Session {
     if (this.run) await verifySkills(this.run, this.config, (this.configuration?.status==='recovered'?this.configuration.skill_target:this.configuration?.skill_previous) ?? []);
     await this.verifyPluginBinding();
     if (unfinishedHooks(this.entries).length) throw new NotSent('原生 hook 尚未报告终态，不能接受新输入');
-    this.append({ kind: 'input', operation, text: body, ...(!this.config.probe && this.instructionQuery ? {query_id:this.instructionQuery.id} : {}) });
+    const query = this.instructionQuery;
+    let sample: PermissionSample | undefined;
+    if (!this.config.probe) {
+      try { sample = permissionSample((await this.permissionCatalog()).inventory); } catch { /* Tools requiring approval remain unapprovable without an original observation. */ }
+    }
+    if (this.active || !this.run || this.stopping || query !== this.instructionQuery) throw new NotSent('SDK query changed before input handoff');
+    verifySettingsSources(this.config.settings_sources);
+    verifyInstalledSettings(this.config);
+    this.inputPermissions = !this.config.probe && query ? {operation, guard: permissionApproval(query.id, query.configuration, sample)} : undefined;
+    this.append({ kind: 'input', operation, text: body, ...(!this.config.probe && query ? {query_id:query.id} : {}),
+      ...(this.inputPermissions ? {permission_baseline:{...this.inputPermissions.guard}} : {}) });
     this.active = operation;
     this.queue.push({ type: 'user', uuid: operation as `${string}-${string}-${string}-${string}-${string}`, session_id: this.config.id,
       message: { role: 'user', content: body }, parent_tool_use_id: null });
@@ -283,24 +308,60 @@ export class Session {
   }
 
   async respond(params: Record<string, unknown>) {
+    const request = this.requests.get(text(params.request_id, 'request ID'));
+    if (!request) throw new NotSent('request expired or belongs to a previous connection');
+    const current = () => {
+      if (request.connection !== params.connection || request.status !== 'pending' || !this.run || this.stopping) throw new NotSent('request expired or belongs to a previous connection');
+      return request;
+    };
+    current();
+    // Refusing an already-owned tool request must remain possible after source
+    // drift or a failed permission read. This path neither opens nor replays it.
+    if (request.tool !== 'AskUserQuestion' && params.decision === 'deny') {
+      if (request.permission_guard) {
+        try { this.append({kind:'permission_check', operation:request.operation, request_id:request.id, action:'deny', guard:{...request.permission_guard}}); } catch { /* Diagnostic failure must not prevent refusal. */ }
+      }
+      request.status = 'submitted';
+      request.resolve({behavior:'deny', message:'用户拒绝了此次工具操作', decisionClassification:'user_reject'});
+      return {native_id:this.config.id, native_turn:request.operation};
+    }
     verifySettingsSources(this.config.settings_sources);
     verifyInstalledSettings(this.config);
     if (this.run) await verifySkills(this.run, this.config, (this.configuration?.status==='recovered'?this.configuration.skill_target:this.configuration?.skill_previous) ?? []);
     await this.verifyPluginBinding();
-    const request = this.requests.get(text(params.request_id, 'request ID'));
-    if (!request || request.connection !== params.connection || request.status !== 'pending') throw new NotSent('request expired or belongs to a previous connection');
+    const pending = current();
     let result: PermissionResult;
-    if (request.tool === 'AskUserQuestion') {
+    if (pending.tool === 'AskUserQuestion') {
       const answers = record(params.answers);
-      result = { behavior: 'allow', updatedInput: { ...request.input, answers } };
+      result = { behavior: 'allow', updatedInput: { ...pending.input, answers } };
     } else if (params.decision === 'allow') {
-      result = { behavior: 'allow', updatedInput: request.input, decisionClassification: 'user_temporary' };
-    } else if (params.decision === 'deny') {
-      result = { behavior: 'deny', message: '用户拒绝了此次工具操作', decisionClassification: 'user_reject' };
+      try { await this.permissionCatalog(); } catch { this.observePermissions(); }
+      current();
+      const guard = pending.permission_guard;
+      if (!guard || guard.state !== 'observed' || guard.query_id !== this.instructionQuery?.id || guard.configuration_id !== fingerprint(this.config)) throw new NotSent(permissionApprovalFailure(guard));
+      verifySettingsSources(this.config.settings_sources);
+      verifyInstalledSettings(this.config);
+      try { this.append({kind:'permission_check',operation:pending.operation,request_id:pending.id,action:'checked_allow',guard:{...guard}}); }
+      catch { pending.permission_guard = observePermissionApproval(guard); throw new NotSent(permissionApprovalFailure(pending.permission_guard)); }
+      result = { behavior: 'allow', updatedInput: pending.input, decisionClassification: 'user_temporary' };
     } else throw new NotSent('invalid permission decision');
-    request.status = 'submitted';
-    request.resolve(result);
-    return { native_id: this.config.id, native_turn: request.operation };
+    current();
+    pending.status = 'submitted';
+    pending.resolve(result);
+    return { native_id: this.config.id, native_turn: pending.operation };
+  }
+
+  private observePermissions(sample?: PermissionSample, queryID = this.instructionQuery?.id) {
+    if (this.inputPermissions && this.inputPermissions.guard.query_id === queryID) this.inputPermissions.guard = observePermissionApproval(this.inputPermissions.guard, sample);
+    for (const request of this.requests.values()) {
+      if (request.status !== 'pending' || !request.permission_guard || request.permission_guard.query_id !== queryID) continue;
+      const previous = request.permission_guard;
+      request.permission_guard = observePermissionApproval(previous, sample);
+      if (previous.state !== request.permission_guard.state) {
+        try { this.append({kind:'permission_check',operation:request.operation,request_id:request.id,action:'invalidated',guard:{...request.permission_guard}}); }
+        catch { request.permission_guard = {...request.permission_guard,state:'unavailable'}; }
+      }
+    }
   }
 
   async interrupt(params: Record<string, unknown>) {
@@ -467,10 +528,16 @@ export class Session {
     const run = this.run, channel = this.hookChannel, connection = this.connection, query = this.instructionQuery;
     const binding = fingerprint(this.config);
     if (query.configuration !== binding) throw new NotSent('权限规则查询与当前配置版本不一致');
-    const inventory = await channel.readPermissions(this.config.cwd);
-    if (run !== this.run || channel !== this.hookChannel || connection !== this.connection || query !== this.instructionQuery ||
-        binding !== fingerprint(this.config) || this.changing || this.stopping) throw new NotSent('读取期间原生查询或配置已变化，请重新读取');
-    return { config: this.config, connection, query_id: query.id, configuration_id: binding, inventory };
+    try {
+      const inventory = await channel.readPermissions(this.config.cwd);
+      if (run !== this.run || channel !== this.hookChannel || connection !== this.connection || query !== this.instructionQuery ||
+          binding !== fingerprint(this.config) || this.changing || this.stopping) throw new NotSent('读取期间原生查询或配置已变化，请重新读取');
+      this.observePermissions(permissionSample(inventory), query.id);
+      return { config: this.config, connection, query_id: query.id, configuration_id: binding, inventory };
+    } catch (error) {
+      this.observePermissions(undefined, query.id);
+      throw error;
+    }
   }
 
   private async verifyPluginBinding(adoptionTarget?: SessionConfig) {

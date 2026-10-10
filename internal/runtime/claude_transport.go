@@ -41,6 +41,7 @@ type claudeTransport struct {
 	installedSettings         int
 	installedSettingsRecovery int
 	originalQueryRecovery     int
+	pendingPermissions        int
 }
 
 func claudeEnv(i Instance) []string {
@@ -113,6 +114,7 @@ func connectClaude(ctx context.Context, i Instance, dir string) (*claudeTranspor
 		InstalledSettings         int    `json:"installed_settings"`
 		InstalledSettingsRecovery int    `json:"installed_settings_recovery"`
 		OriginalQueryRecovery     int    `json:"original_query_recovery"`
+		PendingPermissions        int    `json:"pending_permissions"`
 	}
 	if err = p.call(ctx, "hello", map[string]any{}, &hello); err != nil || hello.Version != 1 || hello.SDK != "0.3.280" {
 		p.close()
@@ -122,6 +124,7 @@ func connectClaude(ctx context.Context, i Instance, dir string) (*claudeTranspor
 	p.installedSettings = hello.InstalledSettings
 	p.installedSettingsRecovery = hello.InstalledSettingsRecovery
 	p.originalQueryRecovery = hello.OriginalQueryRecovery
+	p.pendingPermissions = hello.PendingPermissions
 	return p, nil
 }
 

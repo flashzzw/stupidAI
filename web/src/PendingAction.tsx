@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 
 export type PendingAction = {
   id: string; kind: string; status: string; title: string; details?: string; response_kind: string;
+  permission_guard?: { version: number; complete: boolean; state: string; detail?: string };
   options: { id: string; label: string; description?: string; value: unknown }[];
   questions: { id: string; header: string; question: string; is_secret: boolean; multiple?: boolean; allow_custom?: boolean;
     options: { id: string; label: string; description?: string }[] }[];
@@ -18,6 +19,9 @@ export function PendingPanel({ action, sessionId, disabled, send }: {
   const unavailable = disabled || action.status !== 'pending';
   const canAnswer = ['user_input', 'async_input', 'message_input'].includes(action.response_kind);
   const question = canAnswer || action.kind === 'input_required';
+  const guard = action.permission_guard;
+  const approvalBlocked = !!guard && (guard.version !== 1 || guard.complete !== false || guard.state !== 'observed');
+  const guardKnown = guard?.version === 1 && guard.complete === false && ['observed', 'changed', 'unavailable'].includes(guard.state);
   function submit(event: FormEvent) {
     event.preventDefault();
     void send({ kind: 'respond', session_id: sessionId, pending_id: action.id,
@@ -29,7 +33,8 @@ export function PendingPanel({ action, sessionId, disabled, send }: {
     {action.details ? <details><summary>工具参数</summary><pre>{action.details}</pre></details> : null}
     {action.status === 'unverified' ? <p>原连接已变化，此请求尚未确认有效。请重新核对或返回原端处理。</p> : null}
     {action.status === 'submitted' ? <p role="status">回复已发送，等待原生确认。请勿重复回答。</p> : null}
-    {action.response_kind === 'approval' ? <div className="pending-options">{action.options.map((option) => <button key={option.id} disabled={unavailable}
+    {guard ? <p role="status">{guardKnown && guard.detail || '当前权限规则观察不可用，不能批准这条请求；可拒绝本次工具操作或中止原输入。'}</p> : null}
+    {action.response_kind === 'approval' ? <div className="pending-options">{action.options.map((option) => <button key={option.id} disabled={unavailable || approvalBlocked && !(option.id === 'deny' && option.value === 'deny')}
       onClick={() => void send({ kind: 'respond', session_id: sessionId, pending_id: action.id, option_id: option.id })}>
       {option.label}{option.description ? <small>{option.description}</small> : null}</button>)}</div> : null}
     {action.response_kind === 'approval' && action.kind !== 'mcpServer/elicitation/request' && action.options.some((option) => typeof option.value === 'object') ? <details><summary>原生规则详情</summary><pre>{JSON.stringify(action.options.filter((option) => typeof option.value === 'object').map((option) => option.value), null, 2)}</pre></details> : null}

@@ -36,23 +36,25 @@ type claudeEvent struct {
 	} `json:"tasks"`
 }
 type claudeEntry struct {
-	QueryID           string                   `json:"query_id,omitempty"`
-	At                string                   `json:"at,omitempty"`
-	Kind              string                   `json:"kind"`
-	Operation         string                   `json:"operation"`
-	Text              string                   `json:"text"`
-	Event             claudeEvent              `json:"event"`
-	InstructionLoad   *claudeInstructionLoad   `json:"load,omitempty"`
-	InstructionPrompt *claudeInstructionPrompt `json:"link,omitempty"`
+	PermissionBaseline *PermissionApprovalEvidence `json:"permission_baseline,omitempty"`
+	QueryID            string                      `json:"query_id,omitempty"`
+	At                 string                      `json:"at,omitempty"`
+	Kind               string                      `json:"kind"`
+	Operation          string                      `json:"operation"`
+	Text               string                      `json:"text"`
+	Event              claudeEvent                 `json:"event"`
+	InstructionLoad    *claudeInstructionLoad      `json:"load,omitempty"`
+	InstructionPrompt  *claudeInstructionPrompt    `json:"link,omitempty"`
 }
 type claudeRequest struct {
-	ID         string          `json:"id"`
-	Connection string          `json:"connection"`
-	Operation  string          `json:"operation"`
-	Tool       string          `json:"tool"`
-	Input      json.RawMessage `json:"input"`
-	Title      string          `json:"title"`
-	Status     string          `json:"status"`
+	PermissionGuard *PermissionApprovalEvidence `json:"permission_guard,omitempty"`
+	ID              string                      `json:"id"`
+	Connection      string                      `json:"connection"`
+	Operation       string                      `json:"operation"`
+	Tool            string                      `json:"tool"`
+	Input           json.RawMessage             `json:"input"`
+	Title           string                      `json:"title"`
+	Status          string                      `json:"status"`
 }
 type claudeSnapshot struct {
 	Config struct {
@@ -294,6 +296,9 @@ func projectClaude(scope Scope, s claudeSnapshot) View {
 		id, _ := json.Marshal(request.ID)
 		p := Pending{ID: scope.Instance.ID + "/" + request.Connection + "/" + request.ID, NativeID: scope.NativeID, NativeTurn: request.Operation,
 			Kind: request.Tool, Request: request.Input, ConnectionID: request.Connection, RequestID: id, Title: request.Title, Status: request.Status, ResponseKind: "approval", Questions: []Question{}, Options: []Option{}}
+		if request.Tool != "AskUserQuestion" {
+			p.PermissionGuard = claudePermissionApproval(s, request)
+		}
 		if request.Tool == "AskUserQuestion" {
 			p.ResponseKind = "user_input"
 			var input struct {
