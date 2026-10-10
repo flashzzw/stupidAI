@@ -61,3 +61,8 @@
 .skill-input-picker input { width: auto; }
 
 .execution-change .hook-source-choice,.execution-change .configuration-source-choice{display:flex;align-items:flex-start;gap:8px}
+
+/* Keep long native titles and the details action inside narrow viewports. */
+.conversation-header > div { min-width: 0; }
+.conversation-header h1 { overflow-wrap: anywhere; }
+.conversation-header > button { flex-shrink: 0; }
