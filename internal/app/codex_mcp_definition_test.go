@@ -250,3 +250,43 @@ func TestCodexSharedMCPActivationBindsOnlyNewSnapshotAndRejectsStalePreview(t *t
 		t.Fatal("restart lost or rebound the explicit activation candidate")
 	}
 }
+
+func TestCodexSharedMCPRemainsUnchangedDuringSkillResourcePreview(t *testing.T) {
+	c, _ := sharedMCPConfig(t, `{"mcpServers":{"identity":{"command":"python3"}}}`)
+	method := filepath.Join(t.TempDir(), "SKILL.md")
+	if err := os.WriteFile(method, []byte("---\nname: joint-method\ndescription: Owned mixed-resource method\n---\nUse the owned method.\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	c.CapabilityAssets = append(c.CapabilityAssets, CapabilityAsset{ID: "method", Name: "Method", Kind: "skill", Version: "v1", Source: method, Backends: []string{"codex", "claude"}})
+	f := &mcpDefinitionFixture{fixtureRuntime: newFixture()}
+	a := openFixture(t, c, f)
+	receipt, err := a.Apply(Command{ID: "create-mixed", Kind: "create", ProjectID: "project", RouteID: "route", Permission: "read_only",
+		CapabilitySelections: []CapabilitySelection{{AssetID: "shared-mcp", Mode: "enabled"}, {AssetID: "method", Mode: "enabled"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTest(t, func() bool { return a.Snapshot().Sessions[0].Status == "idle" })
+	before, _ := a.ReadExecution(receipt.SessionID)
+	t.Run("unchanged-choice", func(t *testing.T) {
+		_, err := a.PreviewExecutionChange(receipt.SessionID, ExecutionChangeRequest{BaseSnapshotID: before.Snapshot.ID,
+			Selections: []CapabilitySelection{{AssetID: "method", Mode: "enabled"}}})
+		if err == nil {
+			t.Fatal("unchanged mixed resources produced a configuration change")
+		}
+	})
+	t.Run("only-method-changes", func(t *testing.T) {
+		request := ExecutionChangeRequest{BaseSnapshotID: before.Snapshot.ID, Selections: []CapabilitySelection{{AssetID: "method", Mode: "disabled"}}}
+		preview, err := a.PreviewExecutionChange(receipt.SessionID, request)
+		if err != nil || len(preview.Changes) != 1 || preview.Changes[0].AssetID != "method" || preview.Changes[0].Kind != "skill" {
+			t.Fatalf("unchanged shared MCP appeared in the method change: %+v %v", preview.Changes, err)
+		}
+		request.PreviewHash = preview.PreviewHash
+		if _, err := a.Apply(Command{ID: "stage-method", Kind: "stage_execution", SessionID: receipt.SessionID, ExecutionChange: &request}); err != nil {
+			t.Fatal(err)
+		}
+		after, _ := a.ReadExecution(receipt.SessionID)
+		if after.PendingChange == nil || !reflect.DeepEqual(after.PendingChange.Snapshot.MCPSelections, before.Snapshot.MCPSelections) || !reflect.DeepEqual(after.Snapshot, before.Snapshot) || f.creates.Load() != 1 || f.sends.Load() != 0 {
+			t.Fatal("staging a method change rewrote the shared MCP or active execution")
+		}
+	})
+}

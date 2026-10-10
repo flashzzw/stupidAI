@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -180,7 +181,7 @@ func resourceSelectionChanges(before, after *ExecutionSnapshot) []CapabilitySele
 	changes := []CapabilitySelectionChange{}
 	for k, s := range old {
 		t, exists := next[k]
-		if exists && s == t && bv[s.AssetID] == av[s.AssetID] {
+		if exists && reflect.DeepEqual(s, t) && bv[s.AssetID] == av[s.AssetID] {
 			continue
 		}
 		mode, version := "inherit", ""
