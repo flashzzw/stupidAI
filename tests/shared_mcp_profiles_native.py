@@ -57,7 +57,7 @@ class SharedProvider(Provider):
         server, profile, turn = target
         self.tool_programs.append({'backend': 'codex', 'profile': profile, 'turn': turn, 'server': server, 'call_id': f'call_{seq}'})
         name = 'mcp__' + server + '__whoami'
-        code = 'const available=ALL_TOOLS.some(t=>t.name===' + json.dumps(name) + '); text({server:' + json.dumps(server) + ',available}); if(available) text(await tools.' + name + '({}));'
+        code = 'text({mcp_tools:ALL_TOOLS.filter(t=>t.name.startsWith("mcp__")).map(t=>t.name)}); const available=ALL_TOOLS.some(t=>t.name===' + json.dumps(name) + '); text({server:' + json.dumps(server) + ',available}); if(available) text(await tools.' + name + '({}));'
         item = {'id': f'ctc_{seq}', 'type': 'custom_tool_call', 'call_id': f'call_{seq}', 'name': 'exec', 'namespace': 'functions', 'input': code, 'status': 'completed'}
         response = {'id': f'resp_{seq}', 'object': 'response', 'created_at': int(time.time()), 'status': 'completed', 'model': payload['model'],
             'output': [item], 'usage': {'input_tokens': 32, 'output_tokens': 16, 'total_tokens': 48}}
@@ -98,13 +98,13 @@ class SharedProvider(Provider):
 
 
 class SharedFixture(ProfilesFixture):
-    def __init__(self, binary):
+    def __init__(self, binary, provider_class=SharedProvider):
         super().__init__(binary)
         for provider in self.providers.values():
             provider.close()
         provider_root = self.root / 'joint-providers'
         provider_root.mkdir()
-        self.providers = {letter: SharedProvider(provider_root, letter) for letter in ['A', 'B']}
+        self.providers = {letter: provider_class(provider_root, letter) for letter in ['A', 'B']}
         self.provider = self.providers['A']
         self.config['projects'] = []
         self.config['capability_assets'] = []
@@ -198,8 +198,9 @@ for line in sys.stdin:
     def settle(self, receipt):
         def ready():
             op = self.operation(receipt)
-            if op['status'] in ['failed', 'not_sent', 'uncertain']:
+            if op['status'] in ['failed', 'not_sent']:
                 raise RuntimeError(op.get('error', op['status']))
+            # An unknown observation does not terminate the original operation.
             return op if op['status'] in ['succeeded', 'interrupted'] else None
         return wait_for(ready, 'owned joint operation', timeout=60)
 
