@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"codex-netcap/internal/mcpstdio"
 )
 
 type Instance struct {
@@ -82,9 +84,12 @@ type MCPSelection struct {
 }
 
 type MCPDefinition struct {
-	Version     int                     `json:"version"`
-	SHA256      string                  `json:"sha256"`
-	Environment []MCPEnvironmentBinding `json:"environment"`
+	Version      int                     `json:"version"`
+	SHA256       string                  `json:"sha256"`
+	Environment  []MCPEnvironmentBinding `json:"environment"`
+	AssetVersion string                  `json:"asset_version,omitempty"`
+	SourceHash   string                  `json:"source_hash,omitempty"`
+	Binding      *mcpstdio.Binding       `json:"binding,omitempty"`
 }
 
 type MCPEnvironmentBinding struct {
@@ -94,17 +99,18 @@ type MCPEnvironmentBinding struct {
 }
 
 type CapabilityEvidence struct {
-	AssetID       string   `json:"asset_id,omitempty"`
-	Server        string   `json:"server"`
-	Mode          string   `json:"mode"`
-	RuntimeStatus string   `json:"runtime_status"`
-	Source        string   `json:"source,omitempty"`
-	PluginID      string   `json:"plugin_id,omitempty"`
-	Verified      bool     `json:"verified"`
-	Tools         []string `json:"tools"`
-	UsedTools     []string `json:"used_tools"`
-	At            string   `json:"at"`
-	Detail        string   `json:"detail"`
+	Binding       *mcpstdio.Stamp `json:"binding,omitempty"`
+	AssetID       string          `json:"asset_id,omitempty"`
+	Server        string          `json:"server"`
+	Mode          string          `json:"mode"`
+	RuntimeStatus string          `json:"runtime_status"`
+	Source        string          `json:"source,omitempty"`
+	PluginID      string          `json:"plugin_id,omitempty"`
+	Verified      bool            `json:"verified"`
+	Tools         []string        `json:"tools"`
+	UsedTools     []string        `json:"used_tools"`
+	At            string          `json:"at"`
+	Detail        string          `json:"detail"`
 }
 
 type Intent struct {

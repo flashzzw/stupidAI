@@ -80,16 +80,17 @@ export function ExecutionChangeDetails({ sessionId, snapshot, pending, connected
     pending.snapshot.plugin_selections?.every(pack => !pack.hooks || pack.mode === 'disabled') !== false);
   const canCheckChange = !unsupportedCandidate && (sessionStatus === 'idle' || pendingSources && pending?.hook_source_proof?.version===1 && sessionStatus==='unknown' || snapshot.instance.kind === 'codex' && (Boolean(snapshot.skill_selections?.length) || hookDeactivation || pendingSources) && sessionStatus === 'unknown' && nativeStatus === 'idle') && (!pending?.adopt_local_settings || settingsGuard?.state==='registered' && nativeStatus==='sdk_live');
   const backend = snapshot.instance.kind;
-  const hasPlugins = Boolean(snapshot.skill_selections?.length || snapshot.plugin_selections?.length || pending?.snapshot.skill_selections?.length || pending?.snapshot.plugin_selections?.length || assets.some(a => ['cli_plugin','skill'].includes(a.kind) && !a.disabled && a.backends.includes(backend)));
+  const hasMCPResources = Boolean(snapshot.mcp_selections?.some(s => s.definition) || pending?.snapshot.mcp_selections?.some(s => s.definition) || assets.some(a => a.kind === 'mcp' && !a.codex_mcp && !a.disabled && a.backends.includes(backend)));
+  const hasPlugins = Boolean(hasMCPResources || snapshot.skill_selections?.length || snapshot.plugin_selections?.length || pending?.snapshot.skill_selections?.length || pending?.snapshot.plugin_selections?.length || assets.some(a => ['cli_plugin','skill'].includes(a.kind) && !a.disabled && a.backends.includes(backend)));
   const [selections, setSelections] = useState<Selection[]>(() => {
     const target = pending?.snapshot ?? snapshot;
     const picks: Selection[] = [...(target.mcp_selections ?? []), ...(target.skill_selections ?? []), ...(target.plugin_selections ?? [])].map(({ asset_id, mode }) => ({ asset_id, mode,
-      ...(claude || target.skill_selections?.some(s => s.asset_id === asset_id) || target.plugin_selections?.some(s => s.asset_id === asset_id) ? { version: target.capability_refs.find(r => r.asset.id === asset_id)?.asset.version } : {})
+      ...(claude || target.mcp_selections?.some(s => s.asset_id === asset_id && s.definition) || target.skill_selections?.some(s => s.asset_id === asset_id) || target.plugin_selections?.some(s => s.asset_id === asset_id) ? { version: target.capability_refs.find(r => r.asset.id === asset_id)?.asset.version } : {})
     })).filter((s, i, values) => values.findIndex(v => v.asset_id === s.asset_id) === i);
     for (const old of [...(snapshot.mcp_selections ?? []), ...(snapshot.skill_selections ?? []), ...(snapshot.plugin_selections ?? [])]) if (!picks.some(s => s.asset_id === old.asset_id)) picks.push({asset_id:old.asset_id,mode:'inherit'});
     return picks;
   });
-  const pluginChange = !claude && (adoptHookSources || adoptConfiguration || Boolean(snapshot.skill_selections?.length || snapshot.plugin_selections?.length || (pending ? pending.snapshot.plugin_selections?.length : selections.some(s => assets.some(a => a.id === s.asset_id && ['cli_plugin','skill'].includes(a.kind))))));
+  const pluginChange = !claude && (adoptHookSources || adoptConfiguration || Boolean(snapshot.mcp_selections?.some(s => s.definition) || snapshot.skill_selections?.length || snapshot.plugin_selections?.length || (pending ? pending.snapshot.plugin_selections?.length || pending.snapshot.mcp_selections?.some(s => s.definition) : selections.some(s => assets.some(a => a.id === s.asset_id && (['cli_plugin','skill'].includes(a.kind) || a.kind === 'mcp' && !a.codex_mcp))))));
   const [preview, setPreview] = useState<Preview>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -153,20 +154,22 @@ export function ExecutionChangeDetails({ sessionId, snapshot, pending, connected
       </> : null}
       <button disabled={discardDisabled} onClick={() => void command({ kind: 'discard_execution', session_id: sessionId, execution_change: base })}>撤销待应用选择</button>
     </div> : null}
-    {!claude && snapshot.mcp_selections?.some(selection => selection.definition) ? <p className="hint">当前 MCP 资源改配支持已选服务启停。新增、恢复继承和替换资源版本尚未开放；重新启用会核对当前环境引用，原快照和历史记录保留。</p> : null}
+    {!claude && hasMCPResources ? <p className="hint">MCP 资源可新增、启停、明确升级或恢复继承。新版本以实际启动标识核对；仍运行旧版本或证据缺失时保持待核对，保留原快照和候选。重新启用会核对当前环境引用。</p> : null}
     {selections.map((selection) => {
       const pinned = snapshot.capability_refs.find(r => r.asset.id === selection.asset_id)?.asset;
-      const latest = assets.find(a => a.id === selection.asset_id && !a.disabled && (a.kind === 'cli_plugin' || a.kind === 'skill' || claude && a.kind === 'mcp' && !a.codex_mcp) && a.backends.includes(backend));
+      const latest = assets.find(a => a.id === selection.asset_id && !a.disabled && (a.kind === 'cli_plugin' || a.kind === 'skill' || a.kind === 'mcp' && !a.codex_mcp) && a.backends.includes(backend));
       const skill = (pinned ?? latest)?.kind === 'skill', plugin = (pinned ?? latest)?.kind === 'cli_plugin';
+      const resourceMCP = (pinned ?? latest)?.kind === 'mcp' && !(pinned ?? latest)?.codex_mcp;
+      const versioned = claude || plugin || skill || resourceMCP;
       const label = pinned?.name ?? latest?.name ?? selection.asset_id;
       return <div key={selection.asset_id}><label className="native-capability-selection">
       {label} · 待应用选择
       <select data-mcp-mode={skill || plugin ? undefined : selection.asset_id} data-skill-mode={skill ? selection.asset_id : undefined} data-plugin-mode={plugin ? selection.asset_id : undefined} value={selection.mode} disabled={disabled} onChange={(event) => {
-        setSelections((current) => current.map((s) => s.asset_id === selection.asset_id ? { ...s, mode: event.target.value, hook_review: event.target.value === 'inherit' ? undefined : s.hook_review, version:(!claude && !plugin && !skill) || event.target.value === 'inherit' ? undefined : s.version ?? pinned?.version ?? latest?.version } : s));
+        setSelections((current) => current.map((s) => s.asset_id === selection.asset_id ? { ...s, mode: event.target.value, hook_review: event.target.value === 'inherit' ? undefined : s.hook_review, version:!versioned || event.target.value === 'inherit' ? undefined : s.version ?? pinned?.version ?? latest?.version } : s));
         setPreview(undefined); setError('');
-      }}><option value="enabled">启用</option><option value="disabled">禁用</option>{claude || plugin || skill ? <option value="inherit">恢复继承</option> : null}</select>
-    </label>{(claude || plugin || skill) && selection.mode !== 'inherit' ? <small>资源版本：{selection.version ?? pinned?.version ?? latest?.version}</small> : null}
-    {(claude || plugin || skill) && pinned && latest && pinned.version !== latest.version && selection.mode !== 'inherit' ? <label className="native-capability-selection">{label} · 资源版本
+      }}><option value="enabled">启用</option><option value="disabled">禁用</option>{versioned ? <option value="inherit">恢复继承</option> : null}</select>
+    </label>{versioned && selection.mode !== 'inherit' ? <small>资源版本：{selection.version ?? pinned?.version ?? latest?.version}</small> : null}
+    {versioned && pinned && latest && pinned.version !== latest.version && selection.mode !== 'inherit' ? <label className="native-capability-selection">{label} · 资源版本
       <select data-mcp-version={skill || plugin ? undefined : selection.asset_id} data-skill-version={skill ? selection.asset_id : undefined} data-plugin-version={plugin ? selection.asset_id : undefined} value={selection.version ?? pinned.version} disabled={disabled} onChange={event => {
         setSelections(current => current.map(s => s.asset_id === selection.asset_id ? {...s,version:event.target.value,hook_review:undefined} : s)); setPreview(undefined); setError('');
       }}><option value={pinned.version}>保持 {pinned.version}</option><option value={latest.version}>改用 {latest.version}</option></select>
@@ -176,7 +179,7 @@ export function ExecutionChangeDetails({ sessionId, snapshot, pending, connected
       onChange={review => { setSelections(current => current.map(s => s.asset_id === selection.asset_id ? {...s,hook_review:review} : s)); setPreview(undefined); setError(''); }} /> : null}
     </div>;
     })}
-    {claude || hasPlugins ? <>{(claude ? ['mcp','skill','cli_plugin'] : ['skill','cli_plugin']).map(kind => <label key={kind} className="native-capability-selection">添加 {kind === 'skill' ? 'Skill' : kind === 'cli_plugin' ? 'CLI 插件' : 'MCP'} 资产
+    {claude || hasPlugins ? <>{['mcp','skill','cli_plugin'].map(kind => <label key={kind} className="native-capability-selection">添加 {kind === 'skill' ? 'Skill' : kind === 'cli_plugin' ? 'CLI 插件' : 'MCP'} 资产
       <select aria-label={`添加 ${kind === 'skill' ? 'Skill' : kind === 'cli_plugin' ? 'CLI 插件' : 'MCP'} 资产`} value="" disabled={disabled} onChange={event => {
         const asset = assets.find(a => a.id === event.target.value);
         if (asset) setSelections(current => [...current,{asset_id:asset.id,mode:'enabled',version:asset.version}]);

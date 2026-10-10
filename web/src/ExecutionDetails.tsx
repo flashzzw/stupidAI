@@ -23,13 +23,16 @@ export type CapabilityAsset = {
 export type CapabilityEvidence = {
   asset_id?: string; server: string; mode: string; runtime_status: string; verified: boolean;
   tools: string[]; used_tools?: string[]; source?: string; plugin_id?: string; at: string; detail: string;
+  binding?: MCPStamp;
 };
+type MCPStamp = { version: number; digest: string; asset_id: string; asset_version: string; server: string };
 export type SkillEvidence = { asset_id: string; name: string; native_key: string; mode: string; source: string;
   command_advertised: boolean; description_listed: boolean; verified: boolean; at: string; detail: string; coverage?: string };
 type SourceStamp = { path: string; resolved_path: string; kind: string; sha256?: string };
 type ClaudeLocalSettings = { version: number; guard_version?: number; sources: (SourceStamp & { mode?: number })[] };
 type MCPSelection = { asset_id: string; server: string; mode: string; source_path?: string;
-  definition?: { version: number; sha256: string; environment?: { name: string; present: boolean; sha256: string }[] } };
+  definition?: { version: number; sha256: string; asset_version?: string; source_hash?: string; binding?: MCPStamp;
+    environment?: { name: string; present: boolean; sha256: string }[] } };
 export type ExecutionSnapshot = {
   restored_from_snapshot_id?: string;
   schema_version?: number;
@@ -101,11 +104,15 @@ function MCPSelectionDetails({ selection }: { selection: MCPSelection }) {
       <summary>{selection.server} · 资源定义与环境引用</summary>
       <p className="mono">{selection.source_path ?? '定义路径未记录'}</p>
       <small className="mono">定义文件内容标识 {definition.sha256}</small>
-      {definition.version !== 1 || !Array.isArray(environment) ? <p className="error">环境引用版本尚未核对，不能据此确认可用。</p> : <>
+      {![1, 2].includes(definition.version) || !Array.isArray(environment) ? <p className="error">环境引用版本尚未核对，不能据此确认可用。</p> : <>
         {disabled ? <p>{environment.length ? '本版本禁用，保留先前环境引用记录；再次启用时重新核对。' : '本版本禁用，未读取环境引用；再次启用时核对当前配置。'}</p> : environment.length === 0 ? <p>此定义未引用后台环境变量。</p> : <p>已绑定所选 Codex 后台的环境引用，输入前核对其版本。</p>}
         {environment.map(binding => <p className="mono" key={binding.name}>{binding.name} · {disabled ? '本版本不使用 · ' : ''}{binding.present ? '记录时已设置' : '记录时未设置，采用定义默认值'}</p>)}
       </>}
-      <p className="hint">这里保存定义与环境引用的版本记录。原生清单另行核对服务和工具状态，不能独立证明加载了哪一版定义。</p>
+      {definition.version === 2 ? <>
+        <p>计划资源版本：{definition.asset_version ?? '未记录'}</p>
+        {definition.binding ? <small className="mono">计划启动标识 {definition.binding.digest}</small> : disabled ? <p>禁用版本不启动服务；重新启用时绑定当前启动参数。</p> : <p className="error">缺少启动标识，不能确认所选定义已加载。</p>}
+        <p className="hint">这里是计划启动记录。下方原生核对展示实际启动标识，历史调用按调用时的资源版本单独保留。</p>
+      </> : <p className="hint">这里保存定义与环境引用的版本记录。原生清单另行核对服务和工具状态，不能独立证明加载了哪一版定义。</p>}
     </details> : null}
   </div>;
 }
@@ -256,16 +263,17 @@ export function ExecutionDetails({ sessionId, generation, snapshot, evidence, sk
   </details>;
 }
 
-function nativeEvidenceKey(item: CapabilityEvidence) { return JSON.stringify([item.server, item.mode, item.source, item.plugin_id]); }
+function nativeEvidenceKey(item: CapabilityEvidence) { return JSON.stringify([item.server, item.mode, item.source, item.plugin_id, item.binding]); }
 
 function NativeEvidence({ item }: { item: CapabilityEvidence }) {
   const status: Record<string, string> = { connected: '已连接', disabled: '已禁用', connecting: '连接中', pending: '连接中', 'needs-auth': '需要认证', failed: '连接失败' };
   const sources: Record<string, string> = { dynamic: '本次选择', user: '用户配置', project: '项目配置', local: '项目本地配置', managed: '受管配置', enterprise: '企业配置', plugin: 'CLI 插件', configuration: '原生配置', claudeai: 'Claude 账号连接', agent: '子代理配置', sdk: 'SDK 内部服务', unknown: '未知来源' };
-  return <div className="snapshot-asset">
+  return <div className="snapshot-asset" data-mcp-evidence={item.server} data-mcp-phase={item.mode} data-mcp-version={item.binding?.asset_version}>
     <p>{item.server} · {item.mode === 'history' ? '本次状态未核对' : status[item.runtime_status] ?? (item.runtime_status || '未知')} · {item.mode === 'history' ? '仅历史记录' : item.mode === 'inherit' ? '继承配置' : item.verified ? '与选择一致' : '未核对一致'}</p>
     {item.asset_id ? <p>绑定能力：{item.asset_id}</p> : null}
     {item.source ? <p>原生来源：{sources[item.source] ?? '未知来源'}</p> : null}
     {item.plugin_id ? <p className="mono">原生插件 ID：{item.plugin_id}</p> : null}
+    {item.binding ? <><p>{item.mode === 'history' ? '调用时资源版本' : '实际加载资源版本'}：{item.binding.asset_version}</p><small className="mono">{item.mode === 'history' ? '调用时启动标识' : '实际启动标识'} {item.binding.digest}</small></> : null}
     <small>{item.detail}</small>
     {item.mode === 'history' ? <p>此历史来源的当前工具清单未核对。</p> : <><p>原生工具清单：{item.tools.join('、') || '无'}</p><small>清单不代表调用已获准；调用仍受原生权限规则约束。</small></>}
     <p>历史成功调用：{item.used_tools?.join('、') || '暂无证据'}</p>

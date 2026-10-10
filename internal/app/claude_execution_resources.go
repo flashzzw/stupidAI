@@ -27,9 +27,9 @@ func (a *Application) resourceExecutionCandidate(session Session, picks []Capabi
 			if refIndex >= 0 {
 				asset = candidate.CapabilityRefs[refIndex].Asset
 			}
-			if asset.Kind != "cli_plugin" && asset.Kind != "skill" {
+			if asset.Kind != "cli_plugin" && asset.Kind != "skill" && !(asset.Kind == "mcp" && asset.CodexMCP == "") {
 				if asset.Kind != "mcp" || !slices.ContainsFunc(candidate.MCPSelections, func(s runtime.MCPSelection) bool { return s.AssetID == pick.AssetID }) || pick.Mode == "inherit" || pick.Version != "" {
-					return nil, nil, fmt.Errorf("Codex 普通 MCP 仍只支持原已选服务启停；插件可新增、换版本或恢复继承")
+					return nil, nil, fmt.Errorf("Codex profile 内的 MCP 映射只支持原已选服务启停；资源定义可新增、换版本或恢复继承")
 				}
 			}
 		}
@@ -229,7 +229,7 @@ func resourceCandidateSelections(before, after *ExecutionSnapshot) []CapabilityS
 		}
 		if pick.Mode != "inherit" {
 			for _, ref := range after.CapabilityRefs {
-				if ref.Asset.ID == pick.AssetID && (after.Instance.Kind == "claude" || ref.Asset.Kind == "cli_plugin" || ref.Asset.Kind == "skill") {
+				if ref.Asset.ID == pick.AssetID && (after.Instance.Kind == "claude" || ref.Asset.Kind == "cli_plugin" || ref.Asset.Kind == "skill" || ref.Asset.Kind == "mcp" && ref.Asset.CodexMCP == "") {
 					pick.Version = ref.Asset.Version
 				}
 			}

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"codex-netcap/internal/codex"
+	"codex-netcap/internal/mcpstdio"
 )
 
 func addCodexMCPOverrides(ctx context.Context, p codexConnection, scope Scope, overrides map[string]any) error {
@@ -89,11 +90,12 @@ func addCodexMCPOverrides(ctx context.Context, p codexConnection, scope Scope, o
 }
 
 type codexMCPStatus struct {
-	Name       string                     `json:"name"`
-	PluginID   json.RawMessage            `json:"pluginId"`
-	Status     string                     `json:"runtimeStatus"`
-	Tools      map[string]json.RawMessage `json:"tools"`
-	ToolsError *string                    `json:"toolsError"`
+	Capabilities json.RawMessage            `json:"serverCapabilities"`
+	Name         string                     `json:"name"`
+	PluginID     json.RawMessage            `json:"pluginId"`
+	Status       string                     `json:"runtimeStatus"`
+	Tools        map[string]json.RawMessage `json:"tools"`
+	ToolsError   *string                    `json:"toolsError"`
 }
 
 // null explicitly reports a non-plugin server. Omission is an older/unknown
@@ -122,6 +124,25 @@ func codexMCPSource(id string, known bool) string {
 type codexMCPUsageSource struct {
 	Server, PluginID string
 	Known            bool
+	Binding          mcpstdio.Stamp
+}
+
+func codexMCPStamp(raw json.RawMessage, server string) *mcpstdio.Stamp {
+	var stamp mcpstdio.Stamp
+	if json.Unmarshal(raw, &stamp) != nil || !stamp.Valid() || stamp.Server != server {
+		return nil
+	}
+	return &stamp
+}
+
+func codexMCPLoadedBinding(status codexMCPStatus) *mcpstdio.Stamp {
+	var capabilities struct {
+		Experimental map[string]json.RawMessage `json:"experimental"`
+	}
+	if json.Unmarshal(status.Capabilities, &capabilities) != nil {
+		return nil
+	}
+	return codexMCPStamp(capabilities.Experimental[mcpstdio.MetadataKey], status.Name)
 }
 
 // Read the selected thread, not a global inventory. Missing pages, duplicate
@@ -131,12 +152,20 @@ func codexMCPEvidence(ctx context.Context, p codexConnection, scope Scope, turns
 	for _, turn := range turns {
 		for _, item := range turn.Items {
 			pluginID, known := codexMCPOrigin(item.PluginID)
-			origin := codexMCPUsageSource{Server: item.Server, PluginID: pluginID, Known: known}
 			var result *struct {
-				IsError bool `json:"isError"`
+				IsError bool                       `json:"isError"`
+				Meta    map[string]json.RawMessage `json:"_meta"`
 			}
-			if item.Type == "mcpToolCall" && item.Status == "completed" && item.Server != "" && item.Tool != "" && json.Unmarshal(item.MCPResult, &result) == nil && result != nil && !result.IsError && (len(item.MCPError) == 0 || string(item.MCPError) == "null") && !slices.Contains(used[origin], item.Tool) {
-				used[origin] = append(used[origin], item.Tool)
+			if item.Type == "mcpToolCall" && item.Status == "completed" && item.Server != "" && item.Tool != "" && json.Unmarshal(item.MCPResult, &result) == nil && result != nil && !result.IsError && (len(item.MCPError) == 0 || string(item.MCPError) == "null") {
+				origin := codexMCPUsageSource{Server: item.Server, PluginID: pluginID, Known: known}
+				if known && pluginID == "" {
+					if binding := codexMCPStamp(result.Meta[mcpstdio.MetadataKey], item.Server); binding != nil {
+						origin.Binding = *binding
+					}
+				}
+				if !slices.Contains(used[origin], item.Tool) {
+					used[origin] = append(used[origin], item.Tool)
+				}
 			}
 		}
 	}
@@ -186,6 +215,9 @@ func codexMCPEvidence(ctx context.Context, p codexConnection, scope Scope, turns
 		item := CapabilityEvidence{AssetID: selection.AssetID, Server: selection.Server, Mode: selection.Mode, RuntimeStatus: status.Status,
 			PluginID: pluginID, Source: codexMCPSource(pluginID, sourceKnown),
 			Tools: []string{}, At: time.Now().UTC().Format(time.RFC3339Nano), Detail: "原生会话 MCP 清单尚未完整核对"}
+		if sourceKnown && pluginID == "" {
+			item.Binding = codexMCPLoadedBinding(status)
+		}
 		for tool := range status.Tools {
 			item.Tools = append(item.Tools, tool)
 		}
@@ -195,6 +227,15 @@ func codexMCPEvidence(ctx context.Context, p codexConnection, scope Scope, turns
 			item.Detail = "本次会话的原生 MCP 状态与选择不一致"
 			if item.Verified {
 				item.Detail = "已核对本次会话的原生 MCP 状态与工具清单；调用仍受原生权限控制"
+			}
+		}
+		if selection.Definition != nil && selection.Definition.Version == 2 && selection.Mode == "enabled" {
+			expected := selection.Definition.Binding
+			if expected == nil || item.Binding == nil || *item.Binding != expected.Stamp {
+				item.Verified = false
+				item.Detail = "实际 MCP 启动标识缺失或与所选资源版本不同；同名工具清单不能证明已切换"
+			} else if item.Verified {
+				item.Detail = "实际 MCP 启动标识、资源版本及原生状态已核对；历史调用按各自标识保留"
 			}
 		}
 		if pluginID != "" && expectedPlugin == "" {
@@ -210,6 +251,9 @@ func codexMCPEvidence(ctx context.Context, p codexConnection, scope Scope, turns
 			matched = false
 		} else {
 			origin := codexMCPUsageSource{Server: selection.Server, PluginID: expectedPlugin, Known: true}
+			if selection.Definition != nil && selection.Definition.Binding != nil {
+				origin.Binding = selection.Definition.Binding.Stamp
+			}
 			item.UsedTools = used[origin]
 			represented[origin] = true
 		}
@@ -237,6 +281,12 @@ func codexMCPEvidence(ctx context.Context, p codexConnection, scope Scope, turns
 		item.Source = codexMCPSource(pluginID, sourceKnown)
 		if sourceKnown {
 			origin := codexMCPUsageSource{Server: name, PluginID: pluginID, Known: true}
+			if pluginID == "" {
+				item.Binding = codexMCPLoadedBinding(status)
+				if item.Binding != nil {
+					origin.Binding = *item.Binding
+				}
+			}
 			item.UsedTools = used[origin]
 			represented[origin] = true
 		}
@@ -262,6 +312,11 @@ func codexMCPEvidence(ctx context.Context, p codexConnection, scope Scope, turns
 		if a.PluginID != b.PluginID {
 			return a.PluginID < b.PluginID
 		}
+		if a.Binding != b.Binding {
+			left, _ := json.Marshal(a.Binding)
+			right, _ := json.Marshal(b.Binding)
+			return string(left) < string(right)
+		}
 		return !a.Known && b.Known
 	})
 	for _, origin := range historical {
@@ -271,7 +326,13 @@ func codexMCPEvidence(ctx context.Context, p codexConnection, scope Scope, turns
 		if !origin.Known {
 			detail = "历史成功调用缺少有效插件来源字段，未按同名服务推断资产归属"
 		}
-		evidence = append(evidence, CapabilityEvidence{Server: origin.Server, PluginID: origin.PluginID, Source: codexMCPSource(origin.PluginID, origin.Known), Mode: "history", RuntimeStatus: "unreported", Tools: []string{}, UsedTools: tools, At: time.Now().UTC().Format(time.RFC3339Nano), Detail: detail})
+		row := CapabilityEvidence{Server: origin.Server, PluginID: origin.PluginID, Source: codexMCPSource(origin.PluginID, origin.Known), Mode: "history", RuntimeStatus: "unreported", Tools: []string{}, UsedTools: tools, At: time.Now().UTC().Format(time.RFC3339Nano), Detail: detail}
+		if origin.Binding.Valid() {
+			stamp := origin.Binding
+			row.AssetID, row.Binding = stamp.AssetID, &stamp
+			row.Detail = "历史成功调用按结果中的启动标识与资源版本保留，不表示本次加载"
+		}
+		evidence = append(evidence, row)
 	}
 	return evidence, matched
 }

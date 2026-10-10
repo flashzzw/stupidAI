@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"os"
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"codex-netcap/internal/mcpstdio"
 	"codex-netcap/internal/runtime"
 )
 
@@ -26,6 +29,52 @@ func (f *mcpDefinitionFixture) ReadCodexMCPDefinitions(_ context.Context, scope 
 		if selection.Definition != nil {
 			selection.Definition.Environment = []runtime.MCPEnvironmentBinding{}
 		}
+	}
+	return fixtureMCPLaunchBindings(scope)
+}
+
+// A protocol fixture reconstructs the public context digest independently;
+// process payloads here are synthetic and never start a native MCP.
+func fixtureMCPLaunchBindings(scope runtime.Scope) ([]runtime.MCPSelection, error) {
+	for _, selection := range scope.MCPSelections {
+		definition := selection.Definition
+		if definition == nil {
+			continue
+		}
+		if definition.Environment == nil {
+			definition.Environment = []runtime.MCPEnvironmentBinding{}
+		}
+		if definition.Version != 2 {
+			continue
+		}
+		if selection.Mode == "disabled" {
+			definition.Binding = nil
+			continue
+		}
+		body, err := os.ReadFile(selection.SourcePath)
+		if err != nil {
+			return nil, err
+		}
+		var document struct {
+			Servers map[string]struct {
+				Env map[string]string `json:"env"`
+			} `json:"mcpServers"`
+		}
+		if err := json.Unmarshal(body, &document); err != nil {
+			return nil, err
+		}
+		env := map[string]string{}
+		for name := range document.Servers[selection.Server].Env {
+			env[name] = "owned-fixture"
+		}
+		contextBody, _ := json.Marshal([]any{scope.SessionID, scope.StateNamespace, scope.Instance.ID, scope.Instance.Profile, scope.Instance.Socket,
+			selection.SourcePath, definition.SourceHash, definition.SHA256, definition.Environment})
+		sum := sha256.Sum256(append([]byte("netcap-codex-mcp-scope-v1\x00"), contextBody...))
+		binding, err := mcpstdio.Bind(mcpstdio.Stamp{AssetID: selection.AssetID, AssetVersion: definition.AssetVersion, Server: selection.Server}, hex.EncodeToString(sum[:]), scope.Cwd, "owned-fixture", nil, env)
+		if err != nil {
+			return nil, err
+		}
+		definition.Binding = &binding
 	}
 	return scope.MCPSelections, nil
 }
@@ -61,6 +110,9 @@ func TestCodexSharedMCPAssetCanBeSelectedWithoutProfileMapping(t *testing.T) {
 	if selection.AssetID != "shared-mcp" || selection.Server != "identity" || selection.Mode != "enabled" || selection.SourcePath != definition {
 		t.Fatalf("wrong shared selection: %+v", selection)
 	}
+	if selection.Definition.Version != 2 || selection.Definition.Binding == nil || !selection.Definition.Binding.Valid() || selection.Definition.AssetVersion != "v1" || selection.Definition.SourceHash != read.Snapshot.CapabilityRefs[0].Source.SHA256 {
+		t.Fatal("shared definition did not persist its launch and resource version")
+	}
 	encoded, _ := json.Marshal(read.Snapshot)
 	if strings.Contains(string(encoded), "python3") || strings.Contains(string(encoded), "server.py") {
 		t.Fatal("shared execution payload copied into snapshot")
@@ -68,13 +120,16 @@ func TestCodexSharedMCPAssetCanBeSelectedWithoutProfileMapping(t *testing.T) {
 }
 
 func TestCodexSharedMCPRejectsUnboundMetadataBeforeCreatingExecution(t *testing.T) {
-	for _, mode := range []string{"reader-unavailable", "read-error", "missing-server", "extra-server", "asset", "server", "mode", "path", "missing-definition", "version", "hash", "missing-environment", "extra-environment", "wrong-environment", "invalid-hash"} {
+	for _, mode := range []string{"reader-unavailable", "read-error", "missing-server", "extra-server", "asset", "server", "mode", "path", "missing-definition", "version", "hash", "missing-environment", "extra-environment", "wrong-environment", "invalid-hash", "asset-version", "source-hash", "missing-launch", "launch-context", "launch-asset", "launch-version", "launch-server", "launch-cwd", "launch-environment"} {
 		t.Run(mode, func(t *testing.T) {
 			c, _ := sharedMCPConfig(t, `{"mcpServers":{"identity":{"command":"python3","env":{"KEY":"${TOKEN}"}}}}`)
 			f := &mcpDefinitionFixture{fixtureRuntime: newFixture()}
 			f.read = func(scope runtime.Scope) ([]runtime.MCPSelection, error) {
 				selection := &scope.MCPSelections[0]
 				selection.Definition.Environment = []runtime.MCPEnvironmentBinding{{Name: "TOKEN", Present: true, SHA256: strings.Repeat("a", 64)}}
+				if _, err := fixtureMCPLaunchBindings(scope); err != nil {
+					return nil, err
+				}
 				switch mode {
 				case "read-error":
 					return nil, errors.New("owned daemon unavailable")
@@ -104,6 +159,30 @@ func TestCodexSharedMCPRejectsUnboundMetadataBeforeCreatingExecution(t *testing.
 					selection.Definition.Environment[0].Name = "OTHER"
 				case "invalid-hash":
 					selection.Definition.Environment[0].SHA256 = "unknown"
+				case "asset-version":
+					selection.Definition.AssetVersion = "changed"
+				case "source-hash":
+					selection.Definition.SourceHash = strings.Repeat("c", 64)
+				case "missing-launch":
+					selection.Definition.Binding = nil
+				case "launch-context", "launch-asset", "launch-version", "launch-server", "launch-cwd", "launch-environment":
+					if selection.Definition.Binding == nil {
+						break
+					}
+					switch mode {
+					case "launch-context":
+						selection.Definition.Binding.Context = strings.Repeat("d", 64)
+					case "launch-asset":
+						selection.Definition.Binding.AssetID = "other"
+					case "launch-version":
+						selection.Definition.Binding.AssetVersion = "other"
+					case "launch-server":
+						selection.Definition.Binding.Server = "other"
+					case "launch-cwd":
+						selection.Definition.Binding.Cwd += "/other"
+					case "launch-environment":
+						selection.Definition.Binding.Environment = []string{"OTHER"}
+					}
 				}
 				return scope.MCPSelections, nil
 			}
@@ -131,7 +210,7 @@ func TestCodexSharedMCPBindingsPrecedeNativeIntentAndSurviveRestart(t *testing.T
 	bindings := []runtime.MCPEnvironmentBinding{{Name: "TOKEN", Present: true, SHA256: strings.Repeat("a", 64)}}
 	f.read = func(scope runtime.Scope) ([]runtime.MCPSelection, error) {
 		scope.MCPSelections[0].Definition.Environment = queryCopy(bindings)
-		return scope.MCPSelections, nil
+		return fixtureMCPLaunchBindings(scope)
 	}
 	f.before = func(intent runtime.Intent) {
 		state, err := db.Load()
@@ -190,7 +269,7 @@ func TestCodexSharedMCPActivationBindsOnlyNewSnapshotAndRejectsStalePreview(t *t
 				selection.Definition.Environment = append(selection.Definition.Environment, runtime.MCPEnvironmentBinding{Name: "TOKEN", Present: true, SHA256: stamp})
 			}
 		}
-		return scope.MCPSelections, nil
+		return fixtureMCPLaunchBindings(scope)
 	}
 	a := openFixture(t, c, f)
 	receipt, err := a.Apply(Command{ID: "create-disabled", Kind: "create", ProjectID: "project", RouteID: "route", Permission: "read_only",

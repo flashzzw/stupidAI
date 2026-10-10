@@ -137,7 +137,10 @@ func codexPluginSelection(scope runtime.Scope, ref CapabilityReference, mode str
 }
 
 func codexPluginSnapshots(before, after *ExecutionSnapshot) bool {
-	return before.Instance.Kind == "codex" && (len(before.PluginSelections)+len(before.SkillSelections) > 0 || after != nil && len(after.PluginSelections)+len(after.SkillSelections) > 0)
+	resources := func(s *ExecutionSnapshot) bool {
+		return s != nil && (len(s.PluginSelections)+len(s.SkillSelections) > 0 || slices.ContainsFunc(s.MCPSelections, func(p runtime.MCPSelection) bool { return p.Definition != nil }))
+	}
+	return before.Instance.Kind == "codex" && (resources(before) || resources(after))
 }
 
 func (a *Application) codexPluginChange(session Session, picks []CapabilitySelection) bool {
@@ -148,7 +151,7 @@ func (a *Application) codexPluginChange(session Session, picks []CapabilitySelec
 		return true
 	}
 	for _, pick := range picks {
-		if asset, ok := a.asset(pick.AssetID); ok && (asset.Kind == "cli_plugin" || asset.Kind == "skill") {
+		if asset, ok := a.asset(pick.AssetID); ok && (asset.Kind == "cli_plugin" || asset.Kind == "skill" || asset.Kind == "mcp" && asset.CodexMCP == "") {
 			return true
 		}
 	}

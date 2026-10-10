@@ -156,7 +156,8 @@ func codexIdleForPermission(view View, replyID string) bool {
 		found = true
 	}
 	for _, capability := range view.CapabilityEvidence {
-		if capability.Mode != "inherit" && !capability.Verified {
+		// A previous source/version records usage, not a current selection.
+		if capability.Mode != "inherit" && capability.Mode != "history" && !capability.Verified {
 			return false
 		}
 	}

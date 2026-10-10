@@ -13,8 +13,8 @@ import (
 )
 
 func validateCodexPluginChange(in Intent) error {
-	if in.PreviousScope == nil || in.Scope.Instance.Kind != "codex" || in.Scope.NativeID == "" || in.Scope.Purpose != "" || in.ConfigurationBaseline == "" || len(in.Scope.PluginSelections)+len(in.PreviousScope.PluginSelections)+len(in.Scope.SkillSelections)+len(in.PreviousScope.SkillSelections) == 0 && !CodexSourceAdoption(*in.PreviousScope, in.Scope) {
-		return fmt.Errorf("插件改配缺少原绑定、原生身份或准备依据")
+	if in.PreviousScope == nil || in.Scope.Instance.Kind != "codex" || in.Scope.NativeID == "" || in.Scope.Purpose != "" || in.ConfigurationBaseline == "" || len(in.Scope.PluginSelections)+len(in.PreviousScope.PluginSelections)+len(in.Scope.SkillSelections)+len(in.PreviousScope.SkillSelections) == 0 && !hasCodexMCPDefinitions(in.Scope) && !hasCodexMCPDefinitions(*in.PreviousScope) && !CodexSourceAdoption(*in.PreviousScope, in.Scope) {
+		return fmt.Errorf("能力改配缺少原绑定、原生身份或准备依据")
 	}
 	previous := *in.PreviousScope
 	previous.MCPSelections = in.Scope.MCPSelections
@@ -31,6 +31,10 @@ func validateCodexPluginChange(in Intent) error {
 		return fmt.Errorf("插件改配不能改变执行身份、路由或状态归属")
 	}
 	return nil
+}
+
+func hasCodexMCPDefinitions(scope Scope) bool {
+	return slices.ContainsFunc(scope.MCPSelections, func(p MCPSelection) bool { return p.Definition != nil })
 }
 
 func (c *Codex) pluginChangeIdle(ctx context.Context, p codexConnection, scope Scope, baseline string) (View, error) {
@@ -297,6 +301,12 @@ func (c *Codex) applyPluginExecution(ctx context.Context, p codexConnection, in 
 
 func codexRetiredPluginsAbsent(ctx context.Context, p codexConnection, in Intent) bool {
 	retired := map[string]bool{}
+	retiredMCP := map[string]bool{}
+	for _, old := range in.PreviousScope.MCPSelections {
+		if old.Definition != nil && !slices.ContainsFunc(in.Scope.MCPSelections, func(next MCPSelection) bool { return next.Server == old.Server }) {
+			retiredMCP[old.Server] = true
+		}
+	}
 	for _, old := range in.PreviousScope.PluginSelections {
 		if !slices.ContainsFunc(in.Scope.PluginSelections, func(next PluginSelection) bool {
 			return next.NativeSource == old.NativeSource && next.Mode == "enabled"
@@ -304,7 +314,7 @@ func codexRetiredPluginsAbsent(ctx context.Context, p codexConnection, in Intent
 			retired[old.NativeSource] = true
 		}
 	}
-	if len(retired) == 0 {
+	if len(retired) == 0 && len(retiredMCP) == 0 {
 		return true
 	}
 	statuses, complete := codexMCPStatuses(ctx, p, in.Scope.NativeID)
@@ -313,7 +323,7 @@ func codexRetiredPluginsAbsent(ctx context.Context, p codexConnection, in Intent
 	}
 	for _, row := range statuses {
 		id, known := codexMCPOrigin(row.PluginID)
-		if !known || retired[id] {
+		if retiredMCP[row.Name] || len(retired) > 0 && (!known || retired[id]) {
 			return false
 		}
 	}
@@ -360,7 +370,7 @@ func (c *Codex) reconcilePluginExecution(ctx context.Context, p codexConnection,
 		}
 	}
 	if !codexRetiredPluginsAbsent(ctx, p, in) {
-		out.Evidence.Detail = "已撤下插件仍存在或来源清单不完整"
+		out.Evidence.Detail = "已撤下的 MCP 或插件仍存在，或来源清单不完整"
 		return out, nil
 	}
 	if codexMixedPlugins(in.Scope.PluginSelections) || codexMixedPlugins(in.PreviousScope.PluginSelections) {

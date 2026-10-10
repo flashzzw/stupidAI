@@ -49,6 +49,13 @@ func main() {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	if handled, err := runtime.RunMCPStdioExec(ctx, os.Args[1:]); handled {
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误：", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(ctx, os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintln(os.Stderr, "错误：", err)
 		os.Exit(1)

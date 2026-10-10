@@ -6,12 +6,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"slices"
 	"sort"
 	"strings"
+
+	"codex-netcap/internal/mcpstdio"
 )
 
 // Read-only preparation fixes the selected daemon's explicit environment
@@ -76,9 +79,16 @@ type codexMCPDefinition struct {
 
 func readCodexMCPDefinition(selection MCPSelection) (codexMCPDefinition, []string, error) {
 	var out codexMCPDefinition
-	if selection.Definition == nil || selection.Definition.Version != 1 || !hookDefinitionHash.MatchString(selection.Definition.SHA256) ||
+	if selection.Definition == nil || !slices.Contains([]int{1, 2}, selection.Definition.Version) || !hookDefinitionHash.MatchString(selection.Definition.SHA256) ||
 		!codexProviderKey.MatchString(selection.Server) || !filepath.IsAbs(selection.SourcePath) || filepath.Clean(selection.SourcePath) != selection.SourcePath {
 		return out, nil, fmt.Errorf("Codex MCP 定义来源或版本无效")
+	}
+	if selection.Definition.Version == 1 {
+		if selection.Definition.AssetVersion != "" || selection.Definition.SourceHash != "" || selection.Definition.Binding != nil {
+			return out, nil, fmt.Errorf("旧 MCP 定义不能附带未核对的启动绑定")
+		}
+	} else if !hookDefinitionHash.MatchString(selection.Definition.SourceHash) || !(mcpstdio.Stamp{Version: 1, Digest: selection.Definition.SHA256, AssetID: selection.AssetID, AssetVersion: selection.Definition.AssetVersion, Server: selection.Server}).Valid() {
+		return out, nil, fmt.Errorf("MCP 资源版本或来源摘要无效")
 	}
 	file, body, err := readSourceFile(selection.SourcePath, false, "Codex MCP 定义")
 	if err != nil || file.ResolvedPath != selection.SourcePath {
@@ -158,9 +168,14 @@ func ValidateCodexMCPDefinitions(scope Scope) error {
 		if scope.Instance.Kind != "codex" || scope.Purpose != "" {
 			return fmt.Errorf("MCP 定义版本不属于普通 Codex 执行")
 		}
-		_, names, err := readCodexMCPDefinition(selection)
+		definition, names, err := readCodexMCPDefinition(selection)
 		if err != nil {
 			return err
+		}
+		if selection.Definition.Version == 2 {
+			if err := validateCodexMCPLaunch(scope, selection, definition); err != nil {
+				return err
+			}
 		}
 		if selection.Mode == "disabled" && selection.Definition.Environment != nil && len(selection.Definition.Environment) == 0 {
 			continue
@@ -173,6 +188,40 @@ func ValidateCodexMCPDefinitions(scope Scope) error {
 				return fmt.Errorf("MCP 环境引用版本无效")
 			}
 		}
+	}
+	return nil
+}
+
+// The native thread ID is intentionally absent: creation captures this before
+// that ID exists, and resumption must retain the same launch identity. Other
+// selected resources are independent and do not rebind an unchanged MCP.
+func codexMCPLaunchContext(scope Scope, selection MCPSelection) string {
+	definition := selection.Definition
+	body, _ := json.Marshal([]any{scope.SessionID, scope.StateNamespace, scope.Instance.ID, scope.Instance.Profile, scope.Instance.Socket,
+		selection.SourcePath, definition.SourceHash, definition.SHA256, definition.Environment})
+	sum := sha256.Sum256(append([]byte("netcap-codex-mcp-scope-v1\x00"), body...))
+	return hex.EncodeToString(sum[:])
+}
+
+func validateCodexMCPLaunch(scope Scope, selection MCPSelection, definition codexMCPDefinition) error {
+	if scope.SessionID == "" || scope.StateNamespace == "" {
+		return fmt.Errorf("MCP 启动版本缺少执行与状态归属")
+	}
+	binding := selection.Definition.Binding
+	if binding == nil && selection.Mode == "disabled" {
+		return nil
+	}
+	if binding == nil || !binding.Valid() || binding.AssetID != selection.AssetID || binding.AssetVersion != selection.Definition.AssetVersion || binding.Server != selection.Server ||
+		binding.Cwd != scope.Cwd || binding.Context != codexMCPLaunchContext(scope, selection) {
+		return fmt.Errorf("MCP 启动版本与所选资源或执行归属不一致")
+	}
+	names := make([]string, 0, len(definition.Env))
+	for name := range definition.Env {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	if !slices.Equal(names, binding.Environment) {
+		return fmt.Errorf("MCP 启动环境名称与定义不一致")
 	}
 	return nil
 }
@@ -207,6 +256,7 @@ func codexMCPDefinitionConfigs(ctx context.Context, p codexConnection, scope Sco
 			binding := *selection.Definition
 			if capture {
 				binding.Environment = []MCPEnvironmentBinding{}
+				binding.Binding = nil
 			}
 			args := make([]string, 0, len(definition.Args))
 			for _, value := range definition.Args {
@@ -237,15 +287,36 @@ func codexMCPDefinitionConfigs(ctx context.Context, p codexConnection, scope Sco
 		}
 		binding := *selection.Definition
 		binding.Environment = mcpEnvironmentBindings(names, values)
-		if !capture && !reflect.DeepEqual(binding, *selection.Definition) {
-			return nil, nil, fmt.Errorf("Codex MCP 后台环境引用已变化；不能静默采用新的凭据或参数")
-		}
 		config, err := expandCodexMCPDefinition(scope.Cwd, selection.SourcePath, definition, values)
 		if err != nil {
 			return nil, nil, err
 		}
 		config["enabled"] = selection.Mode == "enabled"
 		selections[index].Definition = &binding
+		if binding.Version == 2 {
+			if scope.SessionID == "" || scope.StateNamespace == "" {
+				return nil, nil, fmt.Errorf("MCP 启动版本缺少执行与状态归属")
+			}
+			launch, err := mcpstdio.Bind(mcpstdio.Stamp{AssetID: selection.AssetID, AssetVersion: binding.AssetVersion, Server: selection.Server},
+				codexMCPLaunchContext(scope, selections[index]), scope.Cwd, config["command"].(string), config["args"].([]string), config["env"].(map[string]string))
+			if err != nil {
+				return nil, nil, fmt.Errorf("MCP 实际启动参数无法绑定")
+			}
+			binding.Binding = &launch
+			command, err := os.Executable()
+			if err != nil {
+				return nil, nil, fmt.Errorf("无法定位 MCP stdio 交付程序")
+			}
+			body, err := json.Marshal(launch)
+			if err != nil || len(body) > 65536 {
+				return nil, nil, fmt.Errorf("MCP 启动绑定超出交付范围")
+			}
+			config["args"] = append([]string{codexMCPStdioCommand, string(body), "--", config["command"].(string)}, config["args"].([]string)...)
+			config["command"] = command
+		}
+		if !capture && !reflect.DeepEqual(binding, *selection.Definition) {
+			return nil, nil, fmt.Errorf("Codex MCP 后台环境或实际启动版本已变化；不能静默采用新的凭据或参数")
+		}
 		configs[selection.Server] = config
 	}
 	return selections, configs, nil

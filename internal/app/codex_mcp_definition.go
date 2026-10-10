@@ -26,7 +26,7 @@ func codexMCPSelections(ref CapabilityReference, mode string) ([]runtime.MCPSele
 			entry = filepath.Base(selections[i].SourcePath)
 		}
 		sum := sha256.Sum256(tree.files()[entry])
-		selections[i].Definition = &runtime.MCPDefinition{Version: 1, SHA256: hex.EncodeToString(sum[:])}
+		selections[i].Definition = &runtime.MCPDefinition{Version: 2, SHA256: hex.EncodeToString(sum[:]), AssetVersion: ref.Asset.Version, SourceHash: ref.Source.SHA256}
 	}
 	return selections, nil
 }
@@ -52,7 +52,8 @@ func (a *Application) captureCodexMCPDefinitions(scope runtime.Scope) ([]runtime
 			(selection.Definition == nil) != (original.Definition == nil) {
 			return nil, fmt.Errorf("运行时返回的 MCP 定义不属于所选资产")
 		}
-		if original.Definition != nil && (selection.Definition.Version != original.Definition.Version || selection.Definition.SHA256 != original.Definition.SHA256) {
+		if original.Definition != nil && (selection.Definition.Version != original.Definition.Version || selection.Definition.SHA256 != original.Definition.SHA256 ||
+			selection.Definition.AssetVersion != original.Definition.AssetVersion || selection.Definition.SourceHash != original.Definition.SourceHash) {
 			return nil, fmt.Errorf("运行时改变了所选 MCP 的文件版本")
 		}
 	}
