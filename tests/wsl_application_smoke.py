@@ -58,11 +58,12 @@ def owned_tool_identity(native, reported, script):
     return matches[0]
 
 
-def child(root, role):
+def child(root, role, fixture_env=None):
     root = Path(root)
     config = json.loads((root / 'probe.json').read_text())
     env = environment(root / 'profile')
     env['NETCAP_FIXTURE_KEY'] = 'fixture-A'
+    env.update(fixture_env or {})
     env['WSL_DISTRO_NAME'] = os.environ['WSL_DISTRO_NAME']
     proc = None
     generation = 0
