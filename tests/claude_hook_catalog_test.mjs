@@ -15,7 +15,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 const require = createRequire(new URL('../bridges/claude/package.json', import.meta.url));
 const states = new Map();
 
-mock.module('node:child_process', { namedExports: { spawn: (_command, args) => {
+mock.module('node:child_process', { namedExports: { spawn: (_command, args, options) => {
   const mode=args[0], child=new EventEmitter(); let count=0;
   child.pid=123; child.killed=false; child.exitCode=null; child.signalCode=null;
   child.stdout=new PassThrough(); child.stderr=new PassThrough();
@@ -27,6 +27,20 @@ mock.module('node:child_process', { namedExports: { spawn: (_command, args) => {
   child.stdin=new Writable({write(chunk,_encoding,done){
     const request=JSON.parse(chunk.toString()), id=request.request_id;
     queueMicrotask(()=>{
+      if(request.request.subtype==='list_permission_rules'){
+        if(mode==='permission-close')return;
+        const state={originalCwd:options.cwd,managedOnly:true,rules:[
+          {behavior:'deny',source:'userSettings',rule:'Read(./private/**)',editability:'persistent'},
+          {behavior:'deny',source:'userSettings',rule:'Read(./private/**)',editability:'readonly',notInEffect:true},
+          {behavior:'ask',source:'futureSource',rule:'Bash(echo 中文🦊\n\u202E)',editability:'readonly',description:{prefix:'PRIVATE_DESCRIPTION'}},
+        ],workspaceDirectories:[{path:options.cwd,source:'session'}],errors:[{file:options.cwd+'/settings.json',path:'permissions.allow',message:'PRIVATE_PARSE_ERROR'}]};
+        if(mode==='permission-invalid')delete state.managedOnly;
+        if(mode==='permission-wrong-cwd')state.originalCwd='/foreign';
+        send({type:'fixture_notification',text:'permission frame before'});
+        send({type:'control_response',response:{request_id:id,subtype:mode==='permission-error'?'error':'success',response:{state},error:'PRIVATE_NATIVE_PERMISSION_ERROR'}},true);
+        send({type:'fixture_notification',text:'permission frame after'});
+        return;
+      }
       if(request.request.subtype!=='get_hooks_listing'){
         send({type:'control_response',response:{request_id:id,subtype:'success',response:{hooks_applied:mode==='missing-hook-ack'?undefined:mode!=='rejected-hook-ack',marker:'中文🦊'+'.'.repeat(180000)}}},true); return;
       }
@@ -129,4 +143,64 @@ test('late hook response is consumed after timeout, and a later read still works
   const sdk = await state.roundtrip(); assert.ok(sdk.marker.startsWith('中文🦊'));
   assert.equal((await session.snapshot()).connection, before.connection);
   assert.ok(state.seen.every(m => !m.response?.request_id?.startsWith('netcap-hooks-')));
+});
+
+test('permission rules preserve conflicting native rows and exact spelling without writing state or consuming SDK frames', async t => {
+  const {session,state}=fixture(t,'valid');
+  await assert.rejects(session.permissionCatalog(), /原生查询未开启/);
+  await session.open('fixture');
+  const before=await session.snapshot(), first=await session.permissionCatalog(), second=await session.permissionCatalog();
+  assert.equal(first.query_id,second.query_id);
+  assert.equal(first.configuration_id,second.configuration_id);
+  assert.equal(first.inventory.managed_only,true);
+  assert.equal(first.inventory.items.length,3);
+  assert.deepEqual(first.inventory.items.slice(0,2).map(row=>row.not_in_effect),[false,true]);
+  assert.equal(first.inventory.items[2].source,'futureSource');
+  assert.equal(first.inventory.items[2].rule,'Bash(echo 中文🦊\n\u202E)');
+  assert.deepEqual(first.inventory.errors,[{file:session.config.cwd+'/settings.json',field:'permissions.allow'}]);
+  assert.equal(JSON.stringify(first).includes('PRIVATE'),false);
+  assert.deepEqual((await session.snapshot()).entries,before.entries);
+  assert.equal((await session.snapshot()).history_digest,before.history_digest);
+  assert.equal((await state.roundtrip()).marker,'中文🦊'+'.'.repeat(180000));
+  assert.ok(state.seen.some(row=>row.text==='permission frame after'));
+  assert.ok(state.seen.every(row=>!row.response?.request_id?.startsWith('netcap-hooks-')));
+});
+for(const mode of ['permission-invalid','permission-wrong-cwd','permission-error'])test(`permission ${mode} rejects the complete read without native diagnostic text`,async t=>{
+  const {session}=fixture(t,mode);await session.open('fixture');
+  await assert.rejects(session.permissionCatalog(),error=>!String(error).includes('PRIVATE'));
+});
+test('permission read cannot return after query binding changes or closure',async t=>{
+  const {session}=fixture(t,'valid');await session.open('fixture');
+  const pending=session.permissionCatalog();
+  session.config={...session.config,model:'changed'};
+  await assert.rejects(pending,/查询或配置已变化/);
+  await session.close();
+  await assert.rejects(session.permissionCatalog(),/原生查询未开启/);
+});
+test('closing during a permission read cancels the request without reopening the query',async t=>{
+  const {session}=fixture(t,'permission-close');await session.open('fixture');
+  const rejected=assert.rejects(session.permissionCatalog(),/权限规则报告不可用/);
+  await session.close();await rejected;
+  await assert.rejects(session.permissionCatalog(),/原生查询未开启/);
+});
+
+const {permissionRuleInventory}=await import('../bridges/claude/dist/permission_rules.js');
+for(const mode of ['missing-rows','missing-directories','invalid-mode','invalid-behavior','invalid-source','invalid-rule','invalid-location','invalid-marker','invalid-directory','invalid-errors','invalid-error-row'])test(`native permission boundary rejects ${mode}`,()=>{
+  const state={originalCwd:'/owned',managedOnly:false,rules:[{behavior:'deny',source:'policySettings',rule:'Read(./private)',editability:'readonly'}],workspaceDirectories:[]};
+  if(mode==='missing-rows')delete state.rules;
+  if(mode==='missing-directories')delete state.workspaceDirectories;
+  if(mode==='invalid-mode')state.managedOnly=null;
+  if(mode==='invalid-behavior')state.rules[0].behavior='maybe';
+  if(mode==='invalid-source')state.rules[0].source='';
+  if(mode==='invalid-rule')state.rules[0].rule='bad\ud800';
+  if(mode==='invalid-location')state.rules[0].editability='custom';
+  if(mode==='invalid-marker')state.rules[0].notInEffect=null;
+  if(mode==='invalid-directory')state.workspaceDirectories=[{path:'relative',source:'session'}];
+  if(mode==='invalid-errors')state.errors={};
+  if(mode==='invalid-error-row')state.errors=[{message:'PRIVATE_ERROR'}];
+  assert.throws(()=>permissionRuleInventory({state},'/owned'));
+});
+test('empty native rules remain a valid empty report, distinct from a missing list',()=>{
+  const report=permissionRuleInventory({state:{originalCwd:'/owned',managedOnly:false,rules:[],workspaceDirectories:[]}},'/owned');
+  assert.deepEqual(report.items,[]);assert.deepEqual(report.errors,[]);assert.equal(report.available,true);
 });

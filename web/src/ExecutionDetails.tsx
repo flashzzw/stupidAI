@@ -13,6 +13,7 @@ import { ClaudeSkillCatalog } from './ClaudeSkillCatalog';
 import { ClaudeInstalledPlugins } from './ClaudeInstalledPlugins';
 import { CodexSkillAssets } from './CodexSkillAssets';
 import { HookCatalog } from './HookCatalog';
+import { PermissionCatalog } from './PermissionCatalog';
 import { ConfigurationCatalog, ConfigurationSourceSnapshot, type ConfigurationSources } from './ConfigurationCatalog';
 import { CodexPluginChoice } from './PluginHookReview';
 import type { CommandFields } from './PendingAction';
@@ -200,6 +201,7 @@ export function ExecutionDetails({ sessionId, generation, snapshot, evidence, sk
       {snapshot.instance.kind === 'claude' ? <ClaudeInstalledPlugins key={`installed/${snapshot.id}/${generation}/${connected}`} sessionId={sessionId} baseSnapshotId={snapshot.id} hasPendingChange={Boolean(pending)} busy={busy} connected={connected} read={read} /> : null}
       {snapshot.instance.kind === 'claude' || snapshot.instance.kind === 'codex' ? <HookExecutions executions={hookExecutions} backend={snapshot.instance.kind} connected={connected && sessionStatus !== 'unknown'} /> : null}
       {snapshot.instance.kind === 'claude' || snapshot.instance.kind === 'codex' ? <HookCatalog key={`hooks/${snapshot.id}/${connected}`} sessionId={sessionId} backend={snapshot.instance.kind} connected={connected} read={read} /> : null}
+      {snapshot.instance.kind === 'claude' ? <PermissionCatalog key={`permissions/${sessionId}/${snapshot.id}/${connected}`} sessionId={sessionId} connected={connected} read={read} /> : null}
       {snapshot.instance.kind === 'codex' ? <><ConfigurationSourceSnapshot sources={snapshot.codex_configuration_sources} /><ConfigurationCatalog key={`configuration/${snapshot.id}/${connected}`} sessionId={sessionId} connected={connected} read={read} saved={snapshot.codex_configuration_sources} /></> : null}
       {snapshot.settings_source ? <><p>Claude 自定义 settings 来源</p><SourceDetails source={snapshot.settings_source} /></> : null}
       {installed ? <details className="snapshot-asset"><summary>本执行版本的插件设置文件</summary>

@@ -42,6 +42,7 @@ async function handle(method: string, params: Record<string, unknown>) {
     case 'recover_execution': return session.recoverExecution(params);
     case 'skill_catalog': return session.skillCatalog();
     case 'hook_catalog': return session.hookCatalog();
+    case 'permission_catalog': return session.permissionCatalog();
     case 'respond': return session.respond(params);
     case 'interrupt': return session.interrupt(params);
     case 'prepare_execution': return session.prepareExecution(params.settings_target, params.installed_target);

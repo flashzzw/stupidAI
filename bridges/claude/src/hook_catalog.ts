@@ -3,6 +3,7 @@ import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { Transform } from 'node:stream';
 import type { SpawnedProcess } from '@anthropic-ai/claude-agent-sdk';
 import { NotSent, record } from './protocol.js';
+import { permissionRuleInventory, permissionRulesUnavailable } from './permission_rules.js';
 
 const unavailable = () => new NotSent('当前原生 hook 来源清单不可用');
 
@@ -14,7 +15,7 @@ export class NativeHookChannel {
   private readonly prefix = `netcap-hooks-${randomUUID()}-`;
   private counter = 0;
   private stopped = false;
-  private pending?: { id: string; resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> };
+  private pending?: { id: string; resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout>; failure: () => Error };
 
   constructor(private readonly child: ChildProcessWithoutNullStreams) {
     let parts: Buffer[] = [], size = 0;
@@ -59,7 +60,7 @@ export class NativeHookChannel {
     if (pending?.id === response.request_id) {
       this.pending = undefined; clearTimeout(pending.timer);
       if (response.subtype === 'success') pending.resolve(response.response);
-      else pending.reject(unavailable());
+      else pending.reject(pending.failure());
     }
     return true;
   }
@@ -67,23 +68,30 @@ export class NativeHookChannel {
   private stop() {
     this.stopped = true;
     if (this.pending) {
-      clearTimeout(this.pending.timer); this.pending.reject(unavailable()); this.pending = undefined;
+      clearTimeout(this.pending.timer); this.pending.reject(this.pending.failure()); this.pending = undefined;
     }
   }
 
-  async read() {
-    if (this.stopped || this.pending || this.child.exitCode !== null || this.child.signalCode !== null) throw unavailable();
-    const response = await new Promise<unknown>((resolve, reject) => {
+  private async request(subtype: 'get_hooks_listing' | 'list_permission_rules', failure: () => Error) {
+    if (this.stopped || this.pending || this.child.exitCode !== null || this.child.signalCode !== null) throw failure();
+    return new Promise<unknown>((resolve, reject) => {
       const id = this.prefix + (++this.counter);
       const timer = setTimeout(() => {
-        if (this.pending?.id === id) { this.pending = undefined; reject(unavailable()); }
+        if (this.pending?.id === id) { this.pending = undefined; reject(failure()); }
       }, 5000);
-      this.pending = { id, resolve, reject, timer };
-      this.child.stdin.write(JSON.stringify({ type: 'control_request', request_id: id, request: { subtype: 'get_hooks_listing' } }) + '\n', error => {
-        if (error && this.pending?.id === id) { clearTimeout(timer); this.pending = undefined; reject(unavailable()); }
+      this.pending = { id, resolve, reject, timer, failure };
+      this.child.stdin.write(JSON.stringify({ type: 'control_request', request_id: id, request: { subtype } }) + '\n', error => {
+        if (error && this.pending?.id === id) { clearTimeout(timer); this.pending = undefined; reject(failure()); }
       });
     });
-    return hookInventory(response);
+  }
+
+  async read() {
+    return hookInventory(await this.request('get_hooks_listing', unavailable));
+  }
+
+  async readPermissions(cwd: string) {
+    return permissionRuleInventory(await this.request('list_permission_rules', permissionRulesUnavailable), cwd);
   }
 }
 

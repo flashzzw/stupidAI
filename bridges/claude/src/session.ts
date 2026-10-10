@@ -461,6 +461,18 @@ export class Session {
     return { config: this.config, connection, inventory };
   }
 
+  async permissionCatalog() {
+    if (!this.run || !this.hookChannel || !this.instructionQuery || this.stopping || this.config.probe) throw new NotSent('原生查询未开启；读取权限规则不会启动或恢复查询');
+    if (this.changing || this.configuration?.status === 'applying') throw new NotSent('配置正在变化，暂不能读取权限规则');
+    const run = this.run, channel = this.hookChannel, connection = this.connection, query = this.instructionQuery;
+    const binding = fingerprint(this.config);
+    if (query.configuration !== binding) throw new NotSent('权限规则查询与当前配置版本不一致');
+    const inventory = await channel.readPermissions(this.config.cwd);
+    if (run !== this.run || channel !== this.hookChannel || connection !== this.connection || query !== this.instructionQuery ||
+        binding !== fingerprint(this.config) || this.changing || this.stopping) throw new NotSent('读取期间原生查询或配置已变化，请重新读取');
+    return { config: this.config, connection, query_id: query.id, configuration_id: binding, inventory };
+  }
+
   private async verifyPluginBinding(adoptionTarget?: SessionConfig) {
     if (adoptionTarget && this.config.installed_settings) verifyInstalledSettingsAdoption(this.config, adoptionTarget);
     else verifyInstalledSettings(this.config);

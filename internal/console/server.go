@@ -434,6 +434,19 @@ func Handler(application *app.Application, host, token string, assets fs.FS) htt
 				return
 			}
 			writeJSON(w, 200, result)
+		case strings.HasPrefix(r.URL.Path, "/api/sessions/") && strings.HasSuffix(r.URL.Path, "/permissions/catalog") && r.Method == http.MethodPost:
+			var request *struct{}
+			if err := decode(&request); err != nil || request == nil {
+				deny(w, 400, "权限规则读取请求必须为空 JSON 对象")
+				return
+			}
+			id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/sessions/"), "/permissions/catalog")
+			result, err := application.ReadSessionPermissionCatalog(r.Context(), id)
+			if err != nil {
+				deny(w, 409, err.Error())
+				return
+			}
+			writeJSON(w, 200, result)
 		case strings.HasPrefix(r.URL.Path, "/api/sessions/") && strings.HasSuffix(r.URL.Path, "/hooks/catalog") && r.Method == http.MethodPost:
 			var request *struct{}
 			if err := decode(&request); err != nil || request == nil {
