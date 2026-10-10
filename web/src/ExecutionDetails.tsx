@@ -28,6 +28,8 @@ export type SkillEvidence = { asset_id: string; name: string; native_key: string
   command_advertised: boolean; description_listed: boolean; verified: boolean; at: string; detail: string; coverage?: string };
 type SourceStamp = { path: string; resolved_path: string; kind: string; sha256?: string };
 type ClaudeLocalSettings = { version: number; guard_version?: number; sources: (SourceStamp & { mode?: number })[] };
+type MCPSelection = { asset_id: string; server: string; mode: string; source_path?: string;
+  definition?: { version: number; sha256: string; environment?: { name: string; present: boolean; sha256: string }[] } };
 export type ExecutionSnapshot = {
   restored_from_snapshot_id?: string;
   schema_version?: number;
@@ -46,7 +48,7 @@ export type ExecutionSnapshot = {
   claude_local_settings?: ClaudeLocalSettings;
   codex_user_hooks?: { version: number; file: SourceStamp & { mode?: number } };
   codex_project_hooks?: { version: number; files: { file: SourceStamp & { mode?: number }; configuration_layer: boolean; layer_disabled: boolean; native_discovered: boolean }[] };
-  mcp_selections?: { asset_id: string; server: string; mode: string }[];
+  mcp_selections?: MCPSelection[];
   plugin_selections?: PluginSelection[];
   skill_selections?: { asset_id: string; name: string; native_key: string; mode: string; source: string; source_path: string; discovery_path: string; delivery?: string; plugin_name?: string; resource_kind?: string }[];
 };
@@ -61,12 +63,13 @@ export function CapabilityReferences({ assets, backend, instanceId, connected, r
     {available.map((asset) => <div key={asset.id}><label className="capability-reference">
       <input type="checkbox" name="capability_ref" value={asset.id} disabled={asset.disabled} />
       <span>{asset.name} · {asset.version}<small>{assetKinds[asset.kind] ?? asset.kind} · {asset.management === 'managed' ? '平台管理 · 固定版本' : '外部管理'}{asset.disabled ? ' · 已停止新引用' : ''}</small></span>
-    </label>{(backend === 'codex' && asset.codex_mcp || backend === 'claude' && asset.kind === 'mcp' && !asset.codex_mcp) ? <label className="native-capability-selection">
+    </label>{asset.kind === 'mcp' && (backend === 'codex' || backend === 'claude' && !asset.codex_mcp) ? <label className="native-capability-selection">
       {asset.name} · 原生 MCP 选择
       <select name={`capability_selection:${asset.id}`} defaultValue="inherit" disabled={asset.disabled}>
         <option value="inherit">继承原生配置</option><option value="enabled">本次启用</option><option value="disabled">本次禁用</option>
       </select>
       <small>启用或禁用会自动记录来源引用。启用将连接所选 MCP 服务；调用仍受原生权限控制。其他 MCP 继续继承。同名继承能力无法排除时会明确拒绝。</small>
+      {backend === 'codex' && !asset.codex_mcp ? <small>资源定义当前支持 stdio。环境引用由所选 Codex 后台提供，须列入该执行配置允许的环境变量；禁用时不读取这些引用。</small> : null}
     </label> : null}{['claude', 'codex'].includes(backend) && asset.kind === 'skill' ? <label className="native-capability-selection">
       {asset.name} · 原生 Skill 选择
       <select name={`capability_selection:${asset.id}`} defaultValue="inherit" disabled={asset.disabled}>
@@ -87,6 +90,24 @@ function SourceDetails({ source, absentLabel = '启动时不存在' }: { source:
   return <><p className="mono">{source.path}</p>
     {source.path !== source.resolved_path ? <p className="mono">实际来源：{source.resolved_path}</p> : null}
     <small className="mono">{source.kind === 'absent' ? absentLabel : `内容标识 ${source.sha256}`}</small></>;
+}
+
+function MCPSelectionDetails({ selection }: { selection: MCPSelection }) {
+  const definition = selection.definition, environment = definition?.environment;
+  const disabled = selection.mode === 'disabled';
+  return <div className="mcp-selection">
+    <p>{selection.server} · {disabled ? '禁用' : '启用'}</p>
+    {definition ? <details className="snapshot-asset" data-mcp-definition={selection.asset_id}>
+      <summary>{selection.server} · 资源定义与环境引用</summary>
+      <p className="mono">{selection.source_path ?? '定义路径未记录'}</p>
+      <small className="mono">定义文件内容标识 {definition.sha256}</small>
+      {definition.version !== 1 || !Array.isArray(environment) ? <p className="error">环境引用版本尚未核对，不能据此确认可用。</p> : <>
+        {disabled ? <p>{environment.length ? '本版本禁用，保留先前环境引用记录；再次启用时重新核对。' : '本版本禁用，未读取环境引用；再次启用时核对当前配置。'}</p> : environment.length === 0 ? <p>此定义未引用后台环境变量。</p> : <p>已绑定所选 Codex 后台的环境引用，输入前核对其版本。</p>}
+        {environment.map(binding => <p className="mono" key={binding.name}>{binding.name} · {disabled ? '本版本不使用 · ' : ''}{binding.present ? '记录时已设置' : '记录时未设置，采用定义默认值'}</p>)}
+      </>}
+      <p className="hint">这里保存定义与环境引用的版本记录。原生清单另行核对服务和工具状态，不能独立证明加载了哪一版定义。</p>
+    </details> : null}
+  </div>;
 }
 
 function LocalSettingsSources({ snapshot }: { snapshot: ExecutionSnapshot }) {
@@ -187,7 +208,7 @@ export function ExecutionDetails({ sessionId, generation, snapshot, evidence, sk
       </div>) : <p className="hint">没有登记能力引用；不代表 CLI 没有加载原生或继承能力。</p>}
       {snapshot.mcp_selections?.length ? <>
         <p className="snapshot-subtitle">本次原生 MCP 选择</p>
-        {snapshot.mcp_selections.map((selection) => <p key={`${selection.asset_id}/${selection.server}`}>{selection.server} · {selection.mode === 'enabled' ? '启用' : '禁用'}</p>)}
+        {snapshot.mcp_selections.map((selection) => <MCPSelectionDetails key={`${selection.asset_id}/${selection.server}`} selection={selection} />)}
         <p className="hint">以下是最近保存的原生会话观察。离线或连接变化后需重新核对；来源文件检查不会刷新这份加载证据。</p>
         {evidence?.length ? evidence.filter((item) => item.mode !== 'inherit' && item.mode !== 'history').map((item) => <NativeEvidence key={nativeEvidenceKey(item)} item={item} />) : <p className="hint">等待原生加载核对；尚不能确认本次选择已生效。</p>}
         {evidence?.some((item) => item.mode === 'inherit') ? <><p className="snapshot-subtitle">其他继承的 MCP</p>{evidence.filter((item) => item.mode === 'inherit').map((item) => <NativeEvidence key={item.server} item={item} />)}</> : null}
@@ -222,7 +243,7 @@ export function ExecutionDetails({ sessionId, generation, snapshot, evidence, sk
         {history.map((old) => <details key={old.id}><summary>历史版本 {old.revision ?? 1}</summary>
           <p className="mono">{old.id}</p><p>记录时间：{new Date(old.created_at).toLocaleString()}</p>
           {old.capability_refs.map(({asset}) => <p key={asset.id}>{asset.name} · 资源 {asset.version}</p>)}
-          {old.mcp_selections?.map((selection) => <p key={`${selection.asset_id}/${selection.server}`}>{selection.server} · {selection.mode === 'enabled' ? '启用' : '禁用'}</p>)}
+          {old.mcp_selections?.map((selection) => <MCPSelectionDetails key={`${selection.asset_id}/${selection.server}`} selection={selection} />)}
           {old.skill_selections?.map(selection => <p key={selection.asset_id}>{selection.name} · Skill {selection.mode === 'enabled' ? '启用' : '禁用'}</p>)}
           {old.plugin_selections?.map(selection => <p key={selection.asset_id}>{selection.name} · 插件 {selection.version || '未声明版本'} · {selection.mode === 'enabled' ? '启用' : '禁用'}</p>)}
           <SourceDetails source={old.profile_source} />

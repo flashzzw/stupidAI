@@ -102,6 +102,30 @@ func (p *verifiedCodexConnection) VerifyCredential(ctx context.Context, instance
 	return p.peer.verify(instance.Socket)
 }
 
+func (p *verifiedCodexConnection) MCPEnvironment(ctx context.Context, instance Instance, names []string) (map[string]string, error) {
+	data, err := p.peer.readEnvironment(ctx, instance.Socket)
+	if err != nil {
+		return nil, err
+	}
+	values := map[string]string{}
+	for _, name := range names {
+		selected, err := parseCodexEnvironment(data, name)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := verifyCodexProfile(selected, instance.Profile); err != nil {
+			return nil, err
+		}
+		if value, present := selected[name]; present {
+			values[name] = value
+		}
+	}
+	if err := p.peer.verify(instance.Socket); err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
 func (p *codexPeer) readEnvironment(ctx context.Context, socket string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("Codex 后台环境核对已取消或超时")

@@ -386,7 +386,7 @@ func (a *Application) captureExecution(session Session, ids []string, selections
 			snapshot.SkillSelections = append(snapshot.SkillSelections, binding)
 			continue
 		}
-		if session.Scope.Instance.Kind == "claude" {
+		if session.Scope.Instance.Kind == "claude" || asset.CodexMCP == "" {
 			if selectedIDs[selection.AssetID] {
 				return nil, fmt.Errorf("MCP 选择重复")
 			}
@@ -397,7 +397,11 @@ func (a *Application) captureExecution(session Session, ids []string, selections
 					ref = candidate
 				}
 			}
-			bindings, err := claudeMCPSelections(ref, selection.Mode)
+			selectMCP := claudeMCPSelections
+			if session.Scope.Instance.Kind == "codex" {
+				selectMCP = codexMCPSelections
+			}
+			bindings, err := selectMCP(ref, selection.Mode)
 			if err != nil {
 				return nil, err
 			}
@@ -427,6 +431,15 @@ func (a *Application) captureExecution(session Session, ids []string, selections
 		}
 		servers[asset.CodexMCP], selectedIDs[selection.AssetID] = true, true
 		snapshot.MCPSelections = append(snapshot.MCPSelections, runtime.MCPSelection{AssetID: selection.AssetID, Server: asset.CodexMCP, Mode: selection.Mode, SourcePath: source.Resolved})
+	}
+	if session.Scope.Instance.Kind == "codex" && slices.ContainsFunc(snapshot.MCPSelections, func(selection runtime.MCPSelection) bool { return selection.Definition != nil }) {
+		scope := session.Scope
+		scope.MCPSelections = snapshot.MCPSelections
+		scope.CodexConfigurationSources = snapshot.CodexConfigurationSources
+		snapshot.MCPSelections, err = a.captureCodexMCPDefinitions(scope)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return queryCopy(snapshot), nil
 }

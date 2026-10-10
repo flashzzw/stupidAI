@@ -168,6 +168,9 @@ func (a *Application) prepareExecutionChange(session Session, request ExecutionC
 			}
 		}
 	}
+	if err := a.bindActivatedCodexMCPDefinitions(session, candidate); err != nil {
+		return preview, nil, err
+	}
 	if request.AdoptLocalSettings {
 		var err error
 		preview.LocalSettingsChanges, err = captureLocalSettingsAdoption(session, candidate)

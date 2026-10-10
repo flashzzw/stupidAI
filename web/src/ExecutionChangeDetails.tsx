@@ -153,6 +153,7 @@ export function ExecutionChangeDetails({ sessionId, snapshot, pending, connected
       </> : null}
       <button disabled={discardDisabled} onClick={() => void command({ kind: 'discard_execution', session_id: sessionId, execution_change: base })}>撤销待应用选择</button>
     </div> : null}
+    {!claude && snapshot.mcp_selections?.some(selection => selection.definition) ? <p className="hint">当前 MCP 资源改配支持已选服务启停。新增、恢复继承和替换资源版本尚未开放；重新启用会核对当前环境引用，原快照和历史记录保留。</p> : null}
     {selections.map((selection) => {
       const pinned = snapshot.capability_refs.find(r => r.asset.id === selection.asset_id)?.asset;
       const latest = assets.find(a => a.id === selection.asset_id && !a.disabled && (a.kind === 'cli_plugin' || a.kind === 'skill' || claude && a.kind === 'mcp' && !a.codex_mcp) && a.backends.includes(backend));

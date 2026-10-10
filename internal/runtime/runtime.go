@@ -71,13 +71,26 @@ type Scope struct {
 }
 
 // MCPSelection binds an explicit native server name to a registered source.
-// Codex uses profile overrides; Claude reads its resource definition at query
-// startup. Neither representation carries commands or credential values.
+// Legacy Codex selections use profile overrides. Resource definitions carry
+// source and environment versions, never commands or credential values.
 type MCPSelection struct {
-	AssetID    string `json:"asset_id"`
-	Server     string `json:"server"`
-	Mode       string `json:"mode"`
-	SourcePath string `json:"source_path"`
+	AssetID    string         `json:"asset_id"`
+	Server     string         `json:"server"`
+	Mode       string         `json:"mode"`
+	SourcePath string         `json:"source_path"`
+	Definition *MCPDefinition `json:"definition,omitempty"`
+}
+
+type MCPDefinition struct {
+	Version     int                     `json:"version"`
+	SHA256      string                  `json:"sha256"`
+	Environment []MCPEnvironmentBinding `json:"environment"`
+}
+
+type MCPEnvironmentBinding struct {
+	Name    string `json:"name"`
+	Present bool   `json:"present"`
+	SHA256  string `json:"sha256"`
 }
 
 type CapabilityEvidence struct {

@@ -383,7 +383,7 @@ Codex 新连接不重放通知时，历史终态仍保留；已有但未结束�
 
 ## Codex 原生 MCP 会话选择
 
-当前支持从 **Codex profile 的 `config.toml` 已有定义**中，按新会话启用或禁用本地 stdio MCP。登记条目增加 `codex_mcp`，值必须对应原生 server 名称；限定 `kind: "mcp"`、`backends: ["codex"]`，`source` 必须指向所选 profile 的 `config.toml`。
+对 **Codex profile 的 `config.toml` 已有定义**，可按新会话启用或禁用本地 stdio MCP。此映射模式的登记条目增加 `codex_mcp`，值必须对应原生 server 名称；限定 `kind: "mcp"`、`backends: ["codex"]`，`source` 必须指向所选 profile 的 `config.toml`。共享资源定义的登记方式见下文。
 
 ```json
 {
@@ -403,7 +403,7 @@ Codex 新连接不重放通知时，历史终态仍保留；已有但未结束�
 
 创建回执不代表 MCP 已连接；尚未核对一致时保留待核对状态，并阻止发送、回复和恢复自动化。原生后台重启后的恢复再次应用原选择，发送前重新核对本次会话。历史成功调用依据原生 `mcpToolCall` 的完成状态和无错误结果，拒绝或失败不计成功。
 
-本节描述 profile-defined stdio MCP 路径，不包含远程 MCP 或任意 MCP 安装。Codex Skill 与 CLI 插件选配已另行实现，支持范围见本文对应切片说明；Claude MCP 路径见下节。主配置摘要不能证明 MCP 可执行程序、脚本依赖、进程环境或账号能力全部固定；`coverage` 仍为 `recorded_sources_only`，完整有效配置尚未完成。可重复验收：
+以上为 profile-defined stdio MCP 路径，不包含远程 MCP 或任意 MCP 安装。Codex Skill 与 CLI 插件选配已另行实现，支持范围见本文对应切片说明；Claude MCP 路径见下节。主配置摘要不能证明 MCP 可执行程序、脚本依赖、进程环境或账号能力全部固定；`coverage` 仍为 `recorded_sources_only`，完整有效配置尚未完成。可重复验收：
 
 ```bash
 make dev-build
@@ -411,6 +411,30 @@ python3 tests/native_mcp_selection_smoke.py --netcap "$PWD/.dev/bin/netcap"
 ```
 
 该脚本使用真实 Codex 与本地模拟供应商，覆盖选择、单次审批、拒绝、重启和不可用服务阻断。[验证与边界](docs/workbench-boundary-results.md#10-codex-stdio-mcp-原生选择与加载核对)单列。
+
+### 共享 stdio MCP 资源定义
+
+普通 Codex 执行也可直接选择能力库中的 stdio 资源定义。登记 `kind: "mcp"`、`backends: ["codex", "claude"]`，不填 `codex_mcp`；`source` 指向带 `mcpServers` 的 JSON，或包含 `.mcp.json` / `mcp.json` 和依赖脚本的资源目录。同一条资产可由两类 CLI 的多份配置分别选用，沿用新建表单及 `create.capability_selections`。
+
+```json
+{
+  "mcpServers": {
+    "project_tools": {
+      "command": "python3",
+      "args": ["./server.py"],
+      "env": {"SERVICE_TOKEN": "${PROJECT_MCP_TOKEN}"}
+    }
+  }
+}
+```
+
+Codex 此路径接受 `type: "stdio"`（可省略）、`command`、字符串数组 `args` 和字符串映射 `env`。`./`、`../`、`scripts/` 开头的命令/参数相对定义文件解析，实际 MCP 工作目录为所选项目。`${VAR}` 和变量不存在时的 `${VAR:-default}` 从已核对身份、profile 和 socket 的 Codex 后台取值；引用名须列入该执行配置的 `env_allow`，没有引用则不读取凭据。未设置且无默认值、嵌套默认值、无效字段以及任意配置层中的同名服务均拒绝。
+
+创建前保存定义文件摘要、环境引用名、存在状态和摘要；命令、展开参数和凭据值只用于运行时，不复制到快照。输入与原 ID 恢复前重新核对，变化时拒绝静默采用新值。资源目录的脚本继续使用既有依赖漂移检查。禁用定义不读取未使用的环境引用；重新启用会为候选版本核对当前引用，预览后变化需重新预览，旧快照和历史绑定保留。
+
+已选 Codex MCP 可按既有准备、原线程卸载、明确应用的流程启停。该资源路径的新增、恢复继承、同名版本替换及远程 HTTP/SSE 尚未开放；原生清单没有完整加载命令/环境，不能仅凭同名服务状态证明定义版本。界面分别展示版本记录和最近原生观察，`coverage` 保持 `recorded_sources_only`。
+
+[四配置联合证据](goals_W/evidence/W02-09-shared-mcp-profiles.md)覆盖同一共享资产、各自专属资产、逐次审批、实际结果回模型、依赖漂移、工作台重启和八次原 ID 启停改配；完整来源、权限与混合能力矩阵继续保留。复跑使用 `python3 tests/shared_mcp_profiles_native.py --netcap "$PWD/.dev/bin/netcap"`，脚本自动创建 `/var/tmp` 自有目录、隔离 namespace 和本地模拟供应商。
 
 ## Claude 原生 MCP 启动选择
 

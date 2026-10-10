@@ -37,12 +37,30 @@ func addCodexMCPOverrides(ctx context.Context, p codexConnection, scope Scope, o
 	if err := p.Call(ctx, "config/read", map[string]any{"cwd": scope.Cwd, "includeLayers": true}, &read); err != nil {
 		return fmt.Errorf("无法核对原生 MCP 配置来源")
 	}
+	_, definitions, err := codexMCPDefinitionConfigs(ctx, p, scope, false)
+	if err != nil {
+		return err
+	}
 	seen := map[string]bool{}
 	for _, selection := range scope.MCPSelections {
 		if !codexProviderKey.MatchString(selection.Server) || seen[selection.Server] || (selection.Mode != "enabled" && selection.Mode != "disabled") {
 			return fmt.Errorf("原生 MCP 选择无效或重复")
 		}
 		seen[selection.Server] = true
+		if definition, exists := definitions[selection.Server]; exists {
+			if len(read.Config.Servers[selection.Server]) > 0 {
+				return fmt.Errorf("共享 MCP %s 与继承配置同名，不能混合来源或凭据", selection.Server)
+			}
+			for _, layer := range read.Layers {
+				if len(layer.Config.Servers[selection.Server]) > 0 {
+					return fmt.Errorf("共享 MCP %s 与已有配置层同名，不能唯一绑定", selection.Server)
+				}
+			}
+			for key, value := range definition {
+				overrides["mcp_servers."+selection.Server+"."+key] = value
+			}
+			continue
+		}
 		var server struct {
 			Command     string `json:"command"`
 			URL         string `json:"url"`

@@ -36,7 +36,7 @@ func TestCodexCredentialReadTargetsOnlyOwnedPeerProcess(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestCodexCredentialProcessHelper$")
-	cmd.Env = []string{"NETCAP_CREDENTIAL_HELPER=1", "CODEX_HOME=" + profile, "NETCAP_OWNED_PEER_KEY=owned-fixture-secret"}
+	cmd.Env = []string{"NETCAP_CREDENTIAL_HELPER=1", "CODEX_HOME=" + profile, "NETCAP_OWNED_PEER_KEY=owned-fixture-secret", "NETCAP_OWNED_EMPTY=", "NETCAP_UNREQUESTED=unrelated-private-value"}
 	input, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -72,6 +72,23 @@ func TestCodexCredentialReadTargetsOnlyOwnedPeerProcess(t *testing.T) {
 	if err := p.VerifyCredential(ctx, instance, "NETCAP_OWNED_PEER_KEY", "rotated-secret"); err == nil {
 		t.Fatal("stale daemon accepted rotated credential")
 	}
+	values, err := p.MCPEnvironment(ctx, instance, []string{"NETCAP_OWNED_PEER_KEY", "NETCAP_OWNED_EMPTY", "NETCAP_ABSENT"})
+	if err != nil || len(values) != 2 || values["NETCAP_OWNED_PEER_KEY"] != "owned-fixture-secret" {
+		t.Fatal("MCP environment read did not return exactly the requested present values")
+	}
+	if value, present := values["NETCAP_OWNED_EMPTY"]; !present || value != "" {
+		t.Fatal("an explicitly empty variable was conflated with an absent one")
+	}
+	other := instance
+	other.Profile = t.TempDir()
+	if values, err := p.MCPEnvironment(ctx, other, []string{"NETCAP_OWNED_PEER_KEY"}); err == nil || values != nil || strings.Contains(err.Error(), "owned-fixture-secret") {
+		t.Fatal("a different profile read or disclosed the peer credential")
+	}
+	cancelled, cancelRead := context.WithCancel(ctx)
+	cancelRead()
+	if values, err := p.MCPEnvironment(cancelled, instance, []string{"NETCAP_OWNED_PEER_KEY"}); err == nil || values != nil {
+		t.Fatal("cancelled environment read returned credentials")
+	}
 	if err := os.Rename(path, path+".old"); err != nil {
 		t.Fatal(err)
 	}
@@ -80,6 +97,9 @@ func TestCodexCredentialReadTargetsOnlyOwnedPeerProcess(t *testing.T) {
 	}
 	if err := p.VerifyCredential(ctx, instance, "NETCAP_OWNED_PEER_KEY", "owned-fixture-secret"); err == nil {
 		t.Fatal("replaced peer identity accepted")
+	}
+	if values, err := p.MCPEnvironment(ctx, instance, []string{"NETCAP_OWNED_PEER_KEY"}); err == nil || values != nil {
+		t.Fatal("MCP environment read accepted a replaced peer identity")
 	}
 }
 
